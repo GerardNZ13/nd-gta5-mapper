@@ -80,13 +80,30 @@ function createPoiIcon(category) {
   });
 }
 
+function escapeHtmlPoi(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 function createPoiMarker(poi) {
   const [lat, lng] = poi.position;
   const marker = L.marker([lat, lng], { icon: createPoiIcon(poi.category) });
   const catLabel = getCategoryConfig(poi.category).label;
-  let popup = `<strong>${poi.name || 'POI'}</strong><br/><span style="color:#8a8a94;font-size:0.85em">${catLabel}</span>`;
-  if (poi.notes) popup += `<br/><br/>${poi.notes}`;
-  marker.bindPopup(popup);
+  var name = escapeHtmlPoi(poi.name || 'POI');
+  var notes = poi.notes ? escapeHtmlPoi(poi.notes) : '';
+  var popupContent = '<div class="map-feature-popup" data-type="poi" data-id="' + escapeHtmlPoi(poi.id || '') + '">' +
+    '<strong>' + name + '</strong><br/><span class="popup-meta">' + escapeHtmlPoi(catLabel) + '</span>' +
+    (notes ? '<br/><br/>' + notes : '') +
+    '<div class="popup-actions"><button type="button" class="btn-popup btn-popup-edit" data-action="edit">Edit</button> ' +
+    '<button type="button" class="btn-popup btn-popup-delete" data-action="delete">Delete</button> ' +
+    '<button type="button" class="btn-popup btn-popup-cancel" data-action="cancel">Cancel</button></div></div>';
+  marker.bindPopup(popupContent);
+  marker.on('click', function () {
+    var m = typeof getMap === 'function' ? getMap() : null;
+    if (m) m.panTo(marker.getLatLng());
+  });
   marker.poiData = poi;
   return marker;
 }
@@ -299,6 +316,15 @@ function savePoiFromForm() {
   isAddingPoi = false;
   if (window._poiCancel) window._poiCancel();
   if (typeof renderPoiList === 'function') renderPoiList();
+}
+
+function closePoiPopup(id) {
+  if (!poiLayerGroup) return;
+  poiLayerGroup.eachLayer(function (layer) {
+    if (layer.poiData && layer.poiData.id === id && layer.closePopup) {
+      layer.closePopup();
+    }
+  });
 }
 
 function setPoiVisibility(visible, mapInstance) {

@@ -51,6 +51,7 @@
       version: 2,
       territories: getTerritoriesFromStorage(),
       poi: getPoiFromStorage(),
+      categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const docRef = db.collection(COLLECTION).doc(mapId);

@@ -107,6 +107,7 @@ async function saveToServer() {
     version: 2,
     territories: getTerritoriesFromStorage(),
     poi: getPoiFromStorage(),
+    categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
   };
   const method = (DATA_CONFIG && DATA_CONFIG.saveMethod) || 'POST';
   const res = await fetch(url, {

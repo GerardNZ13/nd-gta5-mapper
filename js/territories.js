@@ -47,8 +47,16 @@ function geoToLatLngs(geo) {
   return geo.map(([lng, lat]) => [lat, lng]);
 }
 
+function escapeHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 function createTerritoryLayer(feature) {
   const props = feature.properties || {};
+  const id = props.id || '';
   const color = props.color || '#8B5CF6';
   const layer = L.polygon(feature.geometry.coordinates.map(geoToLatLngs), {
     color,
@@ -57,9 +65,18 @@ function createTerritoryLayer(feature) {
     weight: 2,
   });
   layer.feature = feature;
-  layer.bindPopup(
-    `<strong>${props.name || 'Territory'}</strong><br/>${props.gang ? `Gang: ${props.gang}` : ''}`
-  );
+  var name = escapeHtml(props.name || 'Territory');
+  var gang = props.gang ? escapeHtml(props.gang) : '';
+  var popupContent = '<div class="map-feature-popup" data-type="territory" data-id="' + escapeHtml(id) + '">' +
+    '<strong>' + name + '</strong>' + (gang ? '<br/><span class="popup-meta">' + gang + '</span>' : '') +
+    '<div class="popup-actions"><button type="button" class="btn-popup btn-popup-edit" data-action="edit">Edit</button> ' +
+    '<button type="button" class="btn-popup btn-popup-delete" data-action="delete">Delete</button> ' +
+    '<button type="button" class="btn-popup btn-popup-cancel" data-action="cancel">Cancel</button></div></div>';
+  layer.bindPopup(popupContent);
+  layer.on('click', function () {
+    var m = typeof getMap === 'function' ? getMap() : null;
+    if (m) m.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 1 });
+  });
   return layer;
 }
 
@@ -233,6 +250,15 @@ function saveTerritoryFromForm() {
   document.getElementById('territory-color').value = '#8B5CF6';
   isDrawingTerritory = false;
   if (typeof renderTerritoryList === 'function') renderTerritoryList();
+}
+
+function closeTerritoryPopup(id) {
+  if (!territoryLayerGroup) return;
+  territoryLayerGroup.eachLayer(function (layer) {
+    if (layer.feature && layer.feature.properties && layer.feature.properties.id === id && layer.closePopup) {
+      layer.closePopup();
+    }
+  });
 }
 
 function setTerritoriesVisibility(visible, mapInstance) {

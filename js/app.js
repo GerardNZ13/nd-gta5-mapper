@@ -95,6 +95,35 @@
     }
   });
 
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.map-feature-popup [data-action]');
+    if (!btn) return;
+    var popup = btn.closest('.map-feature-popup');
+    if (!popup) return;
+    var type = popup.getAttribute('data-type');
+    var id = popup.getAttribute('data-id');
+    var action = btn.getAttribute('data-action');
+    if (!id) return;
+    if (action === 'cancel') {
+      if (type === 'territory') closeTerritoryPopup(id); else closePoiPopup(id);
+      return;
+    }
+    if (action === 'edit') {
+      btnDrawTerritory.classList.remove('active');
+      btnAddPoi.classList.remove('active');
+      cancelDrawingTerritory();
+      cancelAddingPoi();
+      if (type === 'territory') { closeTerritoryPopup(id); openTerritoryFormForEdit(id, map); }
+      else { closePoiPopup(id); openPoiFormForEdit(id, map); }
+      return;
+    }
+    if (action === 'delete') {
+      if (!confirm('Delete this ' + (type === 'territory' ? 'territory' : 'point of interest') + '?')) return;
+      if (type === 'territory') { deleteTerritory(id); closeTerritoryPopup(id); }
+      else { deletePoi(id); closePoiPopup(id); }
+    }
+  });
+
   layerTerritories.addEventListener('change', () => {
     setTerritoriesVisibility(layerTerritories.checked, map);
   });
@@ -107,6 +136,7 @@
       version: 2,
       territories: getTerritoriesFromStorage(),
       poi: getPoiFromStorage(),
+      categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');

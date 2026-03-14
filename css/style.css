@@ -398,6 +398,53 @@ label textarea {
   color: var(--text);
 }
 
+.map-feature-popup {
+  min-width: 140px;
+}
+
+.map-feature-popup .popup-meta {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.map-feature-popup .popup-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.map-feature-popup .btn-popup {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+}
+
+.map-feature-popup .btn-popup:hover {
+  background: var(--border);
+}
+
+.map-feature-popup .btn-popup-edit {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.map-feature-popup .btn-popup-delete {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.map-feature-popup .btn-popup-delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
 .leaflet-draw-toolbar a {
   background: var(--bg-panel) !important;
   color: var(--text) !important;
