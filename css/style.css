@@ -183,6 +183,7 @@ body {
 
 .sidebar {
   grid-area: sidebar;
+  min-height: 0;
   overflow-y: auto;
   padding: 1rem;
   background: var(--bg-panel);
@@ -270,8 +271,7 @@ label textarea {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 200px;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 .item-list li {
   display: flex;
@@ -301,8 +301,7 @@ label textarea {
 }
 
 .poi-list-container {
-  max-height: 280px;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 .poi-category-group {
@@ -324,9 +323,6 @@ label textarea {
   border-left: 3px solid var(--border);
 }
 
-.poi-category-group .item-list {
-  max-height: none;
-}
 
 .map-container {
   grid-area: map;

@@ -19,6 +19,44 @@ const POI_CATEGORIES = {
   other: { label: 'Other', color: '#94a3b8' },
 };
 
+var CUSTOM_CATEGORY_COLOR = '#94a3b8';
+
+function getAllCategoriesFromPois() {
+  var pois = getPoiFromStorage();
+  var seen = {};
+  pois.forEach(function (p) {
+    var c = p.category && String(p.category).trim();
+    if (!c) c = 'Other';
+    seen[c] = true;
+  });
+  return Object.keys(seen).sort();
+}
+
+function refreshPoiCategoryDropdown() {
+  var sel = document.getElementById('poi-category');
+  if (!sel) return;
+  var categories = getAllCategoriesFromPois();
+  sel.innerHTML = '';
+  if (categories.length === 0) {
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = '(type category below)';
+    sel.appendChild(empty);
+  } else {
+    categories.forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+function getCategoryConfig(category) {
+  if (category && POI_CATEGORIES[category]) return POI_CATEGORIES[category];
+  return { label: category && String(category).trim() ? String(category).trim() : 'Other', color: CUSTOM_CATEGORY_COLOR };
+}
+
 function getPoiFromStorage() {
   try {
     const raw = localStorage.getItem(POI_STORAGE_KEY);
@@ -33,7 +71,7 @@ function savePoiToStorage(pois) {
 }
 
 function createPoiIcon(category) {
-  const cfg = POI_CATEGORIES[category] || POI_CATEGORIES.other;
+  const cfg = getCategoryConfig(category);
   return L.divIcon({
     className: 'poi-marker',
     html: `<span style="background:${cfg.color};border:2px solid #fff;border-radius:50%;width:14px;height:14px;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.4)"></span>`,
@@ -45,7 +83,7 @@ function createPoiIcon(category) {
 function createPoiMarker(poi) {
   const [lat, lng] = poi.position;
   const marker = L.marker([lat, lng], { icon: createPoiIcon(poi.category) });
-  const catLabel = (POI_CATEGORIES[poi.category] || POI_CATEGORIES.other).label;
+  const catLabel = getCategoryConfig(poi.category).label;
   let popup = `<strong>${poi.name || 'POI'}</strong><br/><span style="color:#8a8a94;font-size:0.85em">${catLabel}</span>`;
   if (poi.notes) popup += `<br/><br/>${poi.notes}`;
   marker.bindPopup(popup);
@@ -77,9 +115,13 @@ function startAddingPoi(map) {
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   document.getElementById('poi-delete').style.display = 'none';
   document.getElementById('panel-poi-form').hidden = false;
+  refreshPoiCategoryDropdown();
   document.getElementById('poi-name').value = '';
   document.getElementById('poi-notes').value = '';
-  document.getElementById('poi-category').value = 'store';
+  var sel = document.getElementById('poi-category');
+  if (sel.options.length > 0) sel.value = sel.options[0].value; else sel.value = '';
+  var customCat = document.getElementById('poi-category-custom');
+  if (customCat) customCat.value = '';
 
   const handler = (e) => {
     map.off('click', handler);
@@ -106,7 +148,18 @@ function openPoiFormForEdit(id, mapInstance) {
   pendingPoiLatLng = null;
   document.getElementById('poi-name').value = poi.name || '';
   document.getElementById('poi-notes').value = poi.notes || '';
-  document.getElementById('poi-category').value = poi.category || 'store';
+  refreshPoiCategoryDropdown();
+  var customCatEl = document.getElementById('poi-category-custom');
+  var sel = document.getElementById('poi-category');
+  var cat = poi.category && String(poi.category).trim() ? poi.category : 'Other';
+  var hasOption = sel && Array.prototype.find.call(sel.options, function (o) { return o.value === cat; });
+  if (hasOption) {
+    sel.value = cat;
+    if (customCatEl) customCatEl.value = '';
+  } else {
+    if (sel.options.length > 0) sel.selectedIndex = 0;
+    if (customCatEl) customCatEl.value = cat;
+  }
   document.getElementById('poi-form-title').textContent = 'Edit point of interest';
   document.getElementById('poi-delete').style.display = 'inline-block';
   document.getElementById('panel-poi-form').hidden = false;
@@ -121,10 +174,19 @@ function openPoiFormForEdit(id, mapInstance) {
   }
 }
 
+function getCategoryFromForm() {
+  var custom = document.getElementById('poi-category-custom');
+  var customVal = custom && custom.value && custom.value.trim();
+  if (customVal) return customVal.trim();
+  var sel = document.getElementById('poi-category');
+  var v = sel && sel.value && sel.value.trim();
+  return v || 'Other';
+}
+
 function updatePoiFromForm() {
   if (!editingPoiId || !poiLayerGroup) return;
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
-  const category = document.getElementById('poi-category').value;
+  const category = getCategoryFromForm();
   const notes = document.getElementById('poi-notes').value.trim();
   const poi = getPoiById(editingPoiId);
   if (!poi) return;
@@ -162,8 +224,6 @@ function deletePoi(id) {
   if (typeof renderPoiList === 'function') renderPoiList();
 }
 
-var POI_CATEGORY_ORDER = ['store', 'weapon', 'clothing', 'mission', 'collectible', 'spawn', 'landmark', 'other'];
-
 function renderPoiList() {
   const container = document.getElementById('poi-list-container');
   const empty = document.getElementById('poi-list-empty');
@@ -174,14 +234,13 @@ function renderPoiList() {
   if (pois.length === 0) return;
   var byCategory = {};
   pois.forEach(function (p) {
-    var cat = p.category && POI_CATEGORIES[p.category] ? p.category : 'other';
+    var cat = p.category && String(p.category).trim() ? p.category : 'Other';
     if (!byCategory[cat]) byCategory[cat] = [];
     byCategory[cat].push(p);
   });
-  POI_CATEGORY_ORDER.forEach(function (catKey) {
+  Object.keys(byCategory).sort().forEach(function (catKey) {
     var items = byCategory[catKey];
-    if (!items || items.length === 0) return;
-    var cfg = POI_CATEGORIES[catKey] || POI_CATEGORIES.other;
+    var cfg = getCategoryConfig(catKey);
     var group = document.createElement('div');
     group.className = 'poi-category-group';
     var heading = document.createElement('h3');
@@ -192,37 +251,7 @@ function renderPoiList() {
     ul.className = 'item-list';
     items.forEach(function (p) {
       var name = p.name || 'Unnamed';
-      var dotCfg = POI_CATEGORIES[p.category] || POI_CATEGORIES.other;
-      var li = document.createElement('li');
-      li.setAttribute('data-id', p.id);
-      var dot = document.createElement('span');
-      dot.className = 'item-dot';
-      dot.style.background = dotCfg.color;
-      var label = document.createElement('span');
-      label.className = 'item-name';
-      label.textContent = name;
-      li.appendChild(dot);
-      li.appendChild(label);
-      ul.appendChild(li);
-    });
-    group.appendChild(heading);
-    group.appendChild(ul);
-    container.appendChild(group);
-  });
-  Object.keys(byCategory).filter(function (k) { return POI_CATEGORY_ORDER.indexOf(k) === -1; }).forEach(function (catKey) {
-    var items = byCategory[catKey];
-    var cfg = POI_CATEGORIES[catKey] || POI_CATEGORIES.other;
-    var group = document.createElement('div');
-    group.className = 'poi-category-group';
-    var heading = document.createElement('h3');
-    heading.className = 'poi-category-heading';
-    heading.textContent = cfg.label;
-    heading.style.borderLeftColor = cfg.color;
-    var ul = document.createElement('ul');
-    ul.className = 'item-list';
-    items.forEach(function (p) {
-      var name = p.name || 'Unnamed';
-      var dotCfg = POI_CATEGORIES[p.category] || POI_CATEGORIES.other;
+      var dotCfg = getCategoryConfig(p.category);
       var li = document.createElement('li');
       li.setAttribute('data-id', p.id);
       var dot = document.createElement('span');
@@ -240,6 +269,7 @@ function renderPoiList() {
     container.appendChild(group);
   });
 }
+
 
 function cancelAddingPoi() {
   if (window._poiCancel) window._poiCancel();
@@ -248,7 +278,7 @@ function cancelAddingPoi() {
 function savePoiFromForm() {
   if (!pendingPoiLatLng || !poiLayerGroup) return;
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
-  const category = document.getElementById('poi-category').value;
+  const category = getCategoryFromForm();
   const notes = document.getElementById('poi-notes').value.trim();
 
   const poi = {

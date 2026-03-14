@@ -34,6 +34,8 @@ A custom interactive map for GTA 5 that supports:
   - **Firebase (recommended)** – Free, no backend to run. See [Firebase setup](#firebase-setup) below.
   - **REST API** – Set `DATA_CONFIG.serverUrl` in `js/config.js`. Your server: GET returns `{ version, territories, poi }`; POST/PUT accepts and stores that JSON.
 
+**Local-only, manual sync:** Keep `DATA_CONFIG.firebase` and `serverUrl` as `null`. Each person has their own copy in the browser. To share updates: one person **Export data**, sends the JSON file (e.g. in chat or repo); others **Import data (merge)** every few days. Same IDs merge (no duplicates), new IDs are added.
+
 ### Firebase setup
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com).
@@ -74,6 +76,21 @@ To require sign-in before anyone can use the map:
 4. Reload the app. Users see a sign-in screen; they can **Sign in** (existing) or **Create account** (new). After sign-in they use the map; **Sign out** appears in the header.
 
 If you add `'google'` to `signInMethods`, enable Google in Authentication → Sign-in method and the “Sign in with Google” button will appear.
+
+## Deploy to GitHub Pages (with shared data)
+
+GitHub Pages serves **static files only** – it cannot run a backend or store data. You can still have **server-side saving and a shared collaborative map** by hosting the app on Pages and using **Firebase** for the data:
+
+1. **Set up Firebase** (see [Firebase setup](#firebase-setup)) and put your `firebaseConfig` in `js/config.js`. Everyone who opens the map will use the same Firestore data when they use **Load from server** / **Save to server**.
+
+2. **Push the repo to GitHub** and turn on Pages:
+   - Repo → **Settings** → **Pages** → Source: **Deploy from a branch**
+   - Branch: `main` (or `master`), folder: **/ (root)** → Save
+   - The site will be at `https://<username>.github.io/<repo-name>/`
+
+3. **If you use Firebase Auth** (sign-in): In Firebase Console → **Authentication** → **Settings** → **Authorized domains**, add `github.io` and your full Pages domain (e.g. `yourname.github.io`).
+
+The app uses relative paths, so it works when served from a subpath like `.../gta5-interactive-map/`. No build step is required – just push and the published site will use Firebase for shared data.
 
 ## Map image
 
