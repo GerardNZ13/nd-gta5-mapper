@@ -1,0 +1,86 @@
+# GTA 5 Interactive Map
+
+A custom interactive map for GTA 5 that supports:
+
+- **Territories** – Mark gang zones, districts, or any region with colored polygons and labels
+- **Points of interest (POI)** – Pin locations (stores, missions, collectibles, spawns, etc.) with categories and notes
+
+## Quick start
+
+1. **Add your map image**  
+   Place a top-down GTA 5 map image in `assets/` and set its path in the app (e.g. `assets/gta5-map.png`).  
+   Common sizes: 8192×8192 or 5000×5000 px. The app works with any image size.
+
+2. **Run locally**
+   ```bash
+   npm install
+   npm run dev
+   ```
+   Open http://localhost:3000
+
+3. **Use the map**
+   - Toggle **Territories** and **Points of interest** in the layer panel.
+   - Use **Draw territory** to add gang/region polygons; **Add POI** to place markers.
+   - Data is saved in your browser (localStorage).
+
+## Sharing and merging data
+
+- **Export data** – Downloads a JSON file with all territories and POIs (each item has a unique `id`).
+- **Import data (merge)** – Load a JSON file and *merge* with your current data:
+  - **Same id** → incoming version overwrites yours (no duplicate).
+  - **New id** → item is added.
+  - Example: you have 20 items, someone sends you their export with 2 new items and 1 updated; after import you have 21 items and the updated one is replaced.
+- **Server sync (optional)** – Use **Load from server** and **Save to server** to share one map across people. Two options:
+  - **Firebase (recommended)** – Free, no backend to run. See [Firebase setup](#firebase-setup) below.
+  - **REST API** – Set `DATA_CONFIG.serverUrl` in `js/config.js`. Your server: GET returns `{ version, territories, poi }`; POST/PUT accepts and stores that JSON.
+
+### Firebase setup
+
+1. Create a project at [Firebase Console](https://console.firebase.google.com).
+2. Enable **Firestore Database** (Create database → start in test mode, or use the rules below).
+3. Go to **Project settings** (gear) → **Your apps** → **Add app** → Web (</>). Copy the `firebaseConfig` object.
+4. In `js/config.js`, set `DATA_CONFIG.firebase` to that object, e.g.:
+   ```js
+   firebase: {
+     apiKey: '...',
+     authDomain: '...',
+     projectId: '...',
+     storageBucket: '...',
+     messagingSenderId: '...',
+     appId: '...',
+   },
+   ```
+5. In Firestore, go to **Rules** and paste the contents of `firestore.rules` (or use test mode for quick testing). The rules allow read/write to `mapData/{mapId}`; tighten them (e.g. `request.auth != null`) if you want auth later.
+6. Reload the app – **Load from server** and **Save to server** will sync with Firestore. Everyone using the same `firebaseMapId` (default: `'default'`) shares one map.
+
+### Secure login for live use
+
+To require sign-in before anyone can use the map:
+
+1. **Enable Firebase Authentication** in your Firebase project: Console → Build → Authentication → Get started. Enable **Email/Password** (and optionally **Google**).
+2. In `js/config.js`, set:
+   ```js
+   AUTH_CONFIG: {
+     requireAuth: true,
+     signInMethods: ['email'],   // or ['email', 'google']
+   },
+   ```
+3. **Firestore rules**: In Firebase Console → Firestore → Rules, require auth so only signed-in users can read/write:
+   ```text
+   match /mapData/{mapId} {
+     allow read, write: if request.auth != null;
+   }
+   ```
+4. Reload the app. Users see a sign-in screen; they can **Sign in** (existing) or **Create account** (new). After sign-in they use the map; **Sign out** appears in the header.
+
+If you add `'google'` to `signInMethods`, enable Google in Authentication → Sign-in method and the “Sign in with Google” button will appear.
+
+## Map image
+
+Use any full-map image (PNG/JPG). If you don’t have one, search for “GTA 5 full map high resolution” and see `assets/gta5-map.jpg` (included). To use another image, set `MAP_CONFIG.imageUrl` and `MAP_CONFIG.imageSize` in `js/config.js`.
+
+## Tech
+
+- Leaflet for the map and drawing
+- Vanilla JS, no build step
+- Data: localStorage; export/import with merge-by-ID; optional server URL for shared sync

@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Map data – choose one:
+    // Option A: Open (anyone can read/write)
+    match /mapData/{mapId} {
+      allow read, write: if true;
+    }
+    // Option B: Secure (only signed-in users) – replace the block above with:
+    // match /mapData/{mapId} {
+    //   allow read, write: if request.auth != null;
+    // }
+  }
+}
