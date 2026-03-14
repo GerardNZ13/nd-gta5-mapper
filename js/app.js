@@ -137,6 +137,7 @@
       territories: getTerritoriesFromStorage(),
       poi: getPoiFromStorage(),
       categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
+      categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');

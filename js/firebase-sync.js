@@ -39,6 +39,7 @@
       version: data.version || 2,
       territories: data.territories || [],
       poi: data.poi || [],
+      categoryColors: data.categoryColors || {},
     };
     if (mergeWithCurrent && typeof mergeImportData === 'function') {
       mergeImportData(payload);
@@ -52,6 +53,7 @@
       territories: getTerritoriesFromStorage(),
       poi: getPoiFromStorage(),
       categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
+      categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const docRef = db.collection(COLLECTION).doc(mapId);

@@ -7,19 +7,52 @@ let pendingPoiLatLng = null;
 let editingPoiId = null;
 
 const POI_STORAGE_KEY = 'gta5-map-poi';
+const CATEGORY_COLORS_STORAGE_KEY = 'gta5-map-poi-category-colors';
 
-const POI_CATEGORIES = {
-  store: { label: 'Store', color: '#22c55e' },
-  weapon: { label: 'Weapon / Ammu-Nation', color: '#ef4444' },
-  clothing: { label: 'Clothing', color: '#8b5cf6' },
-  mission: { label: 'Mission', color: '#f59e0b' },
-  collectible: { label: 'Collectible', color: '#eab308' },
-  spawn: { label: 'Spawn / Safehouse', color: '#0ea5e9' },
-  landmark: { label: 'Landmark', color: '#64748b' },
-  other: { label: 'Other', color: '#94a3b8' },
-};
+/** Palette of 18 colors for category pins – auto-assigned when a category is first used. */
+var POI_CATEGORY_PALETTE = [
+  '#22c55e', '#ef4444', '#8b5cf6', '#f59e0b', '#0ea5e9', '#eab308', '#64748b', '#ec4899',
+  '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#a855f7', '#d946ef', '#3b82f6',
+  '#10b981', '#94a3b8',
+];
 
 var CUSTOM_CATEGORY_COLOR = '#94a3b8';
+
+function getCategoryColorsFromStorage() {
+  try {
+    var raw = localStorage.getItem(CATEGORY_COLORS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCategoryColorsToStorage(colors) {
+  try {
+    localStorage.setItem(CATEGORY_COLORS_STORAGE_KEY, JSON.stringify(colors));
+  } catch (err) {
+    console.error('Failed to save category colors:', err);
+  }
+}
+
+function getCategoryConfig(category) {
+  var label = (category && String(category).trim()) ? String(category).trim() : 'Other';
+  var colors = getCategoryColorsFromStorage();
+  if (colors[label]) {
+    return { label: label, color: colors[label] };
+  }
+  var allCats = getAllCategoriesFromPois();
+  var combined = {};
+  allCats.forEach(function (c) { combined[c] = true; });
+  Object.keys(colors).forEach(function (c) { combined[c] = true; });
+  combined[label] = true;
+  var ordered = Object.keys(combined).sort();
+  var idx = ordered.indexOf(label);
+  var color = POI_CATEGORY_PALETTE[idx % POI_CATEGORY_PALETTE.length];
+  colors[label] = color;
+  saveCategoryColorsToStorage(colors);
+  return { label: label, color: color };
+}
 
 function getAllCategoriesFromPois() {
   var pois = getPoiFromStorage();
@@ -52,11 +85,6 @@ function refreshPoiCategoryDropdown() {
   }
 }
 
-function getCategoryConfig(category) {
-  if (category && POI_CATEGORIES[category]) return POI_CATEGORIES[category];
-  return { label: category && String(category).trim() ? String(category).trim() : 'Other', color: CUSTOM_CATEGORY_COLOR };
-}
-
 function getPoiFromStorage() {
   try {
     const raw = localStorage.getItem(POI_STORAGE_KEY);
@@ -67,7 +95,15 @@ function getPoiFromStorage() {
 }
 
 function savePoiToStorage(pois) {
-  localStorage.setItem(POI_STORAGE_KEY, JSON.stringify(pois));
+  try {
+    var json = JSON.stringify(pois);
+    localStorage.setItem(POI_STORAGE_KEY, json);
+  } catch (err) {
+    console.error('Failed to save POIs to localStorage:', err);
+    if (err && err.name === 'QuotaExceededError') {
+      alert('Storage full: could not save. Try removing some POIs or clear site data for this origin.');
+    }
+  }
 }
 
 function createPoiIcon(category) {
@@ -193,17 +229,20 @@ function openPoiFormForEdit(id, mapInstance) {
 
 function getCategoryFromForm() {
   var custom = document.getElementById('poi-category-custom');
-  var customVal = custom && custom.value && custom.value.trim();
-  if (customVal) return customVal.trim();
+  var customVal = (custom && custom.value && typeof custom.value === 'string') ? custom.value.trim() : '';
+  if (customVal) return customVal;
   var sel = document.getElementById('poi-category');
-  var v = sel && sel.value && sel.value.trim();
+  var v = (sel && sel.value && typeof sel.value === 'string') ? sel.value.trim() : '';
   return v || 'Other';
 }
 
 function updatePoiFromForm() {
   if (!editingPoiId || !poiLayerGroup) return;
+  var category = getCategoryFromForm();
+  if (!category || typeof category !== 'string') category = 'Other';
+  category = category.trim() || 'Other';
+
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
-  const category = getCategoryFromForm();
   const notes = document.getElementById('poi-notes').value.trim();
   const poi = getPoiById(editingPoiId);
   if (!poi) return;
@@ -294,15 +333,18 @@ function cancelAddingPoi() {
 
 function savePoiFromForm() {
   if (!pendingPoiLatLng || !poiLayerGroup) return;
+  var category = getCategoryFromForm();
+  if (!category || typeof category !== 'string') category = 'Other';
+  category = category.trim() || 'Other';
+
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
-  const category = getCategoryFromForm();
   const notes = document.getElementById('poi-notes').value.trim();
 
   const poi = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-    name,
-    category,
-    notes,
+    name: name,
+    category: category,
+    notes: notes,
     position: [pendingPoiLatLng.lat, pendingPoiLatLng.lng],
   };
 

@@ -54,6 +54,19 @@ function mergePoi(existing, incoming) {
 }
 
 /**
+ * Merge category colors: incoming overwrites existing for same key.
+ */
+function mergeCategoryColors(existing, incoming) {
+  if (!incoming || typeof incoming !== 'object') return existing;
+  var out = {};
+  Object.keys(existing).forEach(function (k) { out[k] = existing[k]; });
+  Object.keys(incoming).forEach(function (k) {
+    if (incoming[k] && typeof incoming[k] === 'string') out[k] = incoming[k];
+  });
+  return out;
+}
+
+/**
  * Merge imported data with current storage and persist. Returns { territories, poi } counts.
  */
 function mergeImportData(data) {
@@ -63,6 +76,11 @@ function mergeImportData(data) {
   const poi = (data.poi && Array.isArray(data.poi)) ? mergePoi(existingPoi, data.poi) : existingPoi;
   saveTerritoriesToStorage(territories);
   savePoiToStorage(poi);
+  if (typeof getCategoryColorsFromStorage === 'function' && typeof saveCategoryColorsToStorage === 'function') {
+    var existingColors = getCategoryColorsFromStorage();
+    var mergedColors = mergeCategoryColors(existingColors, data.categoryColors);
+    saveCategoryColorsToStorage(mergedColors);
+  }
   return { territories: territories.length, poi: poi.length };
 }
 
@@ -108,6 +126,7 @@ async function saveToServer() {
     territories: getTerritoriesFromStorage(),
     poi: getPoiFromStorage(),
     categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
+    categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
   };
   const method = (DATA_CONFIG && DATA_CONFIG.saveMethod) || 'POST';
   const res = await fetch(url, {
