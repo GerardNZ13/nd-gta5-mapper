@@ -148,9 +148,17 @@ function createPoiMarker(poi) {
   const catLabel = getCategoryConfig(poi.category).label;
   var name = escapeHtmlPoi(poi.name || 'POI');
   var notes = poi.notes ? escapeHtmlPoi(poi.notes) : '';
+  var imageUrl = (poi.imageUrl && String(poi.imageUrl).trim()) || '';
+  var imageBlock = '';
+  if (imageUrl) {
+    var safeUrl = escapeHtmlPoi(imageUrl);
+    imageBlock = '<div class="poi-popup-image"><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="poi-image-link">View screenshot</a>' +
+      '<img src="' + safeUrl + '" alt="POI screenshot" class="poi-popup-thumb" loading="lazy" onerror="this.style.display=\'none\'" /></div>';
+  }
   var popupContent = '<div class="map-feature-popup" data-type="poi" data-id="' + escapeHtmlPoi(poi.id || '') + '">' +
     '<strong>' + name + '</strong><br/><span class="popup-meta">' + escapeHtmlPoi(catLabel) + '</span>' +
     (notes ? '<br/><br/>' + notes : '') +
+    (imageBlock ? '<br/>' + imageBlock : '') +
     '<div class="popup-actions"><button type="button" class="btn-popup btn-popup-edit" data-action="edit">Edit</button> ' +
     '<button type="button" class="btn-popup btn-popup-delete" data-action="delete">Delete</button> ' +
     '<button type="button" class="btn-popup btn-popup-cancel" data-action="cancel">Cancel</button></div></div>';
@@ -218,6 +226,8 @@ function startAddingPoi(map) {
   refreshPoiCategoryDropdown();
   document.getElementById('poi-name').value = '';
   document.getElementById('poi-notes').value = '';
+  var imgUrl = document.getElementById('poi-image-url');
+  if (imgUrl) imgUrl.value = '';
   var sel = document.getElementById('poi-category');
   if (sel.options.length > 0) sel.value = sel.options[0].value; else sel.value = '';
   var customCat = document.getElementById('poi-category-custom');
@@ -248,6 +258,8 @@ function openPoiFormForEdit(id, mapInstance) {
   pendingPoiLatLng = null;
   document.getElementById('poi-name').value = poi.name || '';
   document.getElementById('poi-notes').value = poi.notes || '';
+  var imgUrlEl = document.getElementById('poi-image-url');
+  if (imgUrlEl) imgUrlEl.value = (poi.imageUrl && String(poi.imageUrl).trim()) ? poi.imageUrl : '';
   refreshPoiCategoryDropdown();
   var customCatEl = document.getElementById('poi-category-custom');
   var sel = document.getElementById('poi-category');
@@ -291,11 +303,14 @@ function updatePoiFromForm() {
 
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
   const notes = document.getElementById('poi-notes').value.trim();
+  var imgUrlEl = document.getElementById('poi-image-url');
+  const imageUrl = (imgUrlEl && imgUrlEl.value && String(imgUrlEl.value).trim()) ? imgUrlEl.value.trim() : '';
   const poi = getPoiById(editingPoiId);
   if (!poi) return;
   poi.name = name;
   poi.category = category;
   poi.notes = notes;
+  poi.imageUrl = imageUrl;
   poiLayerGroup.eachLayer((layer) => {
     if (layer.poiData && layer.poiData.id === editingPoiId) {
       poiLayerGroup.removeLayer(layer);
@@ -400,6 +415,8 @@ function savePoiFromForm() {
 
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
   const notes = document.getElementById('poi-notes').value.trim();
+  var imgUrlEl = document.getElementById('poi-image-url');
+  const imageUrl = (imgUrlEl && imgUrlEl.value && String(imgUrlEl.value).trim()) ? imgUrlEl.value.trim() : '';
 
   const poi = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
@@ -408,6 +425,7 @@ function savePoiFromForm() {
     notes: notes,
     position: [pendingPoiLatLng.lat, pendingPoiLatLng.lng],
   };
+  if (imageUrl) poi.imageUrl = imageUrl;
 
   poiLayerGroup.addLayer(createPoiMarker(poi));
   const pois = getPoiFromStorage();
