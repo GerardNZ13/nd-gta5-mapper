@@ -8,6 +8,25 @@ let editingPoiId = null;
 
 const POI_STORAGE_KEY = 'gta5-map-poi';
 const CATEGORY_COLORS_STORAGE_KEY = 'gta5-map-poi-category-colors';
+const HIDDEN_POI_KEY = 'gta5-map-hidden-poi';
+
+function getHiddenPoiIds() {
+  try {
+    var raw = localStorage.getItem(HIDDEN_POI_KEY);
+    var arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHiddenPoiIds(ids) {
+  try {
+    localStorage.setItem(HIDDEN_POI_KEY, JSON.stringify(Array.isArray(ids) ? ids : []));
+  } catch (e) {
+    console.warn('Failed to save hidden POIs', e);
+  }
+}
 
 /** Palette of 18 colors for category pins – auto-assigned when a category is first used. */
 var POI_CATEGORY_PALETTE = [
@@ -149,15 +168,43 @@ function initPoiLayer(map) {
   map.addLayer(poiLayerGroup);
 
   const pois = getPoiFromStorage();
+  const hiddenIds = getHiddenPoiIds();
   pois.forEach((poi) => {
     try {
-      poiLayerGroup.addLayer(createPoiMarker(poi));
+      const marker = createPoiMarker(poi);
+      poiLayerGroup.addLayer(marker);
+      const hidden = poi.id && hiddenIds.indexOf(poi.id) !== -1;
+      marker.setOpacity(hidden ? 0 : 1);
     } catch (e) {
       console.warn('Skip invalid POI', poi, e);
     }
   });
 
   return poiLayerGroup;
+}
+
+function setPoiItemVisibility(id, visible) {
+  if (!poiLayerGroup || !id) return;
+  var hiddenIds = getHiddenPoiIds();
+  var idx = hiddenIds.indexOf(id);
+  if (visible) {
+    if (idx !== -1) {
+      hiddenIds = hiddenIds.filter(function (x) { return x !== id; });
+      saveHiddenPoiIds(hiddenIds);
+    }
+    poiLayerGroup.eachLayer(function (layer) {
+      if (layer.poiData && layer.poiData.id === id) layer.setOpacity(1);
+    });
+  } else {
+    if (idx === -1) {
+      hiddenIds = hiddenIds.concat(id);
+      saveHiddenPoiIds(hiddenIds);
+    }
+    poiLayerGroup.eachLayer(function (layer) {
+      if (layer.poiData && layer.poiData.id === id) layer.setOpacity(0);
+    });
+  }
+  if (typeof renderPoiList === 'function') renderPoiList();
 }
 
 function startAddingPoi(map) {
@@ -288,6 +335,7 @@ function renderPoiList() {
   const pois = getPoiFromStorage();
   if (empty) empty.hidden = pois.length > 0;
   if (pois.length === 0) return;
+  var hiddenIds = getHiddenPoiIds();
   var byCategory = {};
   pois.forEach(function (p) {
     var cat = p.category && String(p.category).trim() ? p.category : 'Other';
@@ -308,14 +356,27 @@ function renderPoiList() {
     items.forEach(function (p) {
       var name = p.name || 'Unnamed';
       var dotCfg = getCategoryConfig(p.category);
+      var hidden = p.id && hiddenIds.indexOf(p.id) !== -1;
       var li = document.createElement('li');
       li.setAttribute('data-id', p.id);
+      if (hidden) li.classList.add('item-hidden');
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'item-visibility-toggle';
+      toggle.title = hidden ? 'Show on map' : 'Hide on map';
+      toggle.setAttribute('aria-label', hidden ? 'Show on map' : 'Hide on map');
+      toggle.textContent = hidden ? '\u25cb' : '\u25cf';
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setPoiItemVisibility(p.id, hidden);
+      });
       var dot = document.createElement('span');
       dot.className = 'item-dot';
       dot.style.background = dotCfg.color;
       var label = document.createElement('span');
       label.className = 'item-name';
       label.textContent = name;
+      li.appendChild(toggle);
       li.appendChild(dot);
       li.appendChild(label);
       ul.appendChild(li);

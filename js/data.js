@@ -81,6 +81,12 @@ function mergeImportData(data) {
     var mergedColors = mergeCategoryColors(existingColors, data.categoryColors);
     saveCategoryColorsToStorage(mergedColors);
   }
+  if (data.hiddenTerritoryIds && Array.isArray(data.hiddenTerritoryIds) && typeof saveHiddenTerritoryIds === 'function') {
+    saveHiddenTerritoryIds(data.hiddenTerritoryIds);
+  }
+  if (data.hiddenPoiIds && Array.isArray(data.hiddenPoiIds) && typeof saveHiddenPoiIds === 'function') {
+    saveHiddenPoiIds(data.hiddenPoiIds);
+  }
   return { territories: territories.length, poi: poi.length };
 }
 
@@ -127,6 +133,8 @@ async function saveToServer() {
     poi: getPoiFromStorage(),
     categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
     categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
+    hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
+    hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
   };
   const method = (DATA_CONFIG && DATA_CONFIG.saveMethod) || 'POST';
   const res = await fetch(url, {

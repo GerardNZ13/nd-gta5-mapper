@@ -40,6 +40,8 @@
       territories: data.territories || [],
       poi: data.poi || [],
       categoryColors: data.categoryColors || {},
+      hiddenTerritoryIds: data.hiddenTerritoryIds || [],
+      hiddenPoiIds: data.hiddenPoiIds || [],
     };
     if (mergeWithCurrent && typeof mergeImportData === 'function') {
       mergeImportData(payload);
@@ -54,6 +56,8 @@
       poi: getPoiFromStorage(),
       categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
       categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
+      hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
+      hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const docRef = db.collection(COLLECTION).doc(mapId);

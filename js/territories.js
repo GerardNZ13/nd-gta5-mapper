@@ -10,6 +10,25 @@ let pendingTerritoryLayer = null;
 let editingTerritoryId = null;
 
 const TERRITORY_STORAGE_KEY = 'gta5-map-territories';
+const HIDDEN_TERRITORIES_KEY = 'gta5-map-hidden-territories';
+
+function getHiddenTerritoryIds() {
+  try {
+    const raw = localStorage.getItem(HIDDEN_TERRITORIES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHiddenTerritoryIds(ids) {
+  try {
+    localStorage.setItem(HIDDEN_TERRITORIES_KEY, JSON.stringify(Array.isArray(ids) ? ids : []));
+  } catch (e) {
+    console.warn('Failed to save hidden territories', e);
+  }
+}
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -88,16 +107,49 @@ function initTerritoriesLayer(map) {
   map.addLayer(territoryLayerGroup);
 
   const territories = getTerritoriesFromStorage();
+  const hiddenIds = getHiddenTerritoryIds();
   territories.forEach((feature) => {
     try {
       const layer = createTerritoryLayer(feature);
       territoryLayerGroup.addLayer(layer);
+      const id = feature.properties && feature.properties.id;
+      const hidden = id && hiddenIds.indexOf(id) !== -1;
+      layer.setStyle(hidden ? { opacity: 0, fillOpacity: 0, weight: 0 } : {});
     } catch (e) {
       console.warn('Skip invalid territory', feature, e);
     }
   });
 
   return { territoryLayerGroup, drawnItems };
+}
+
+function setTerritoryVisibility(id, visible) {
+  if (!territoryLayerGroup || !id) return;
+  let hiddenIds = getHiddenTerritoryIds();
+  const idx = hiddenIds.indexOf(id);
+  if (visible) {
+    if (idx !== -1) {
+      hiddenIds = hiddenIds.filter(function (x) { return x !== id; });
+      saveHiddenTerritoryIds(hiddenIds);
+    }
+    territoryLayerGroup.eachLayer(function (layer) {
+      if (layer.feature && layer.feature.properties && layer.feature.properties.id === id) {
+        const c = (layer.feature.properties && layer.feature.properties.color) || '#8B5CF6';
+        layer.setStyle({ color: c, fillColor: c, fillOpacity: 0.35, weight: 2, opacity: 1 });
+      }
+    });
+  } else {
+    if (idx === -1) {
+      hiddenIds = hiddenIds.concat(id);
+      saveHiddenTerritoryIds(hiddenIds);
+    }
+    territoryLayerGroup.eachLayer(function (layer) {
+      if (layer.feature && layer.feature.properties && layer.feature.properties.id === id) {
+        layer.setStyle({ opacity: 0, fillOpacity: 0, weight: 0 });
+      }
+    });
+  }
+  if (typeof renderTerritoryList === 'function') renderTerritoryList();
 }
 
 function startDrawingTerritory(map) {
@@ -158,6 +210,8 @@ function updateTerritoryFromForm() {
   });
   const newLayer = createTerritoryLayer(feature);
   territoryLayerGroup.addLayer(newLayer);
+  const hiddenIds = getHiddenTerritoryIds();
+  setTerritoryVisibility(editingTerritoryId, hiddenIds.indexOf(editingTerritoryId) === -1);
   const territories = getTerritoriesFromStorage().map((f) =>
     (f.properties && f.properties.id) === editingTerritoryId ? feature : f
   );
@@ -166,7 +220,6 @@ function updateTerritoryFromForm() {
   document.getElementById('panel-territory-form').hidden = true;
   document.getElementById('territory-delete').style.display = 'none';
   document.getElementById('territory-form-title').textContent = 'New territory';
-  if (typeof renderTerritoryList === 'function') renderTerritoryList();
 }
 
 function deleteTerritory(id) {
@@ -203,19 +256,33 @@ function renderTerritoryList() {
   if (!list) return;
   list.innerHTML = '';
   const territories = getTerritoriesFromStorage();
+  const hiddenIds = getHiddenTerritoryIds();
   if (empty) empty.hidden = territories.length > 0;
   territories.forEach((f) => {
     const id = f.properties && f.properties.id;
     const name = (f.properties && f.properties.name) || 'Unnamed';
     const color = (f.properties && f.properties.color) || '#8B5CF6';
+    const hidden = id && hiddenIds.indexOf(id) !== -1;
     const li = document.createElement('li');
     li.setAttribute('data-id', id);
+    if (hidden) li.classList.add('item-hidden');
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'item-visibility-toggle';
+    toggle.title = hidden ? 'Show on map' : 'Hide on map';
+    toggle.setAttribute('aria-label', hidden ? 'Show on map' : 'Hide on map');
+    toggle.textContent = hidden ? '\u25cb' : '\u25cf';
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setTerritoryVisibility(id, hidden);
+    });
     const dot = document.createElement('span');
     dot.className = 'item-dot';
     dot.style.background = color;
     const label = document.createElement('span');
     label.className = 'item-name';
     label.textContent = name;
+    li.appendChild(toggle);
     li.appendChild(dot);
     li.appendChild(label);
     list.appendChild(li);

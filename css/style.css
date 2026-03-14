@@ -294,6 +294,29 @@ label textarea {
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.2);
 }
+.item-visibility-toggle {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.item-visibility-toggle:hover {
+  color: var(--text);
+  background: var(--bg-input);
+}
+.item-list li.item-hidden {
+  opacity: 0.65;
+}
 .list-empty {
   margin: 0;
   font-size: 0.85rem;
@@ -453,4 +476,132 @@ label textarea {
 .leaflet-draw-actions a {
   background: var(--bg-panel) !important;
   color: var(--text) !important;
+}
+
+/* ----- Interactive tutorial ----- */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem 1rem;
+  pointer-events: none;
+}
+
+.tutorial-overlay:not(.hidden) {
+  pointer-events: auto;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.tutorial-card {
+  position: relative;
+  z-index: 2001;
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.tutorial-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.tutorial-step-indicator {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.tutorial-dot.active {
+  background: var(--accent);
+  transform: scale(1.15);
+}
+
+.tutorial-dot.done {
+  background: var(--text-muted);
+}
+
+.tutorial-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tutorial-body {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.tutorial-body p {
+  margin: 0 0 0.6em;
+}
+
+.tutorial-body p:last-child {
+  margin-bottom: 0;
+}
+
+.tutorial-body strong {
+  color: var(--text);
+}
+
+.tutorial-body code {
+  background: var(--bg-input);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+
+.tutorial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tutorial-actions .tutorial-close-btn {
+  margin-left: auto;
+}
+
+.tutorial-highlight {
+  position: relative;
+  z-index: 2002;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
 }

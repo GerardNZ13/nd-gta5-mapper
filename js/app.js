@@ -12,6 +12,7 @@
     renderTerritoryList();
     renderPoiList();
     bindAppEvents();
+    if (typeof initTutorial === 'function') initTutorial();
   }
 
   function bindAppEvents() {
@@ -75,6 +76,7 @@
   });
 
   document.getElementById('territory-list').addEventListener('click', (e) => {
+    if (e.target.closest('.item-visibility-toggle')) return;
     const li = e.target.closest('li[data-id]');
     if (li) {
       btnDrawTerritory.classList.remove('active');
@@ -85,6 +87,7 @@
     }
   });
   document.getElementById('poi-list-container').addEventListener('click', (e) => {
+    if (e.target.closest('.item-visibility-toggle')) return;
     const li = e.target.closest('li[data-id]');
     if (li) {
       btnDrawTerritory.classList.remove('active');
@@ -138,6 +141,8 @@
       poi: getPoiFromStorage(),
       categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
       categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
+      hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
+      hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
