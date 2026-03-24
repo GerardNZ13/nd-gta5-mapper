@@ -9,6 +9,26 @@ let editingPoiId = null;
 const POI_STORAGE_KEY = 'gta5-map-poi';
 const CATEGORY_COLORS_STORAGE_KEY = 'gta5-map-poi-category-colors';
 const HIDDEN_POI_KEY = 'gta5-map-hidden-poi';
+const POI_CATEGORY_UI_COLLAPSED_KEY = 'gta5-map-ui-poi-category-collapsed';
+
+function getPoiCategoryUiCollapsed() {
+  try {
+    var raw = localStorage.getItem(POI_CATEGORY_UI_COLLAPSED_KEY);
+    if (!raw) return {};
+    var o = JSON.parse(raw);
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePoiCategoryUiCollapsed(obj) {
+  try {
+    localStorage.setItem(POI_CATEGORY_UI_COLLAPSED_KEY, JSON.stringify(obj && typeof obj === 'object' ? obj : {}));
+  } catch (e) {
+    console.warn('poi category ui collapsed save', e);
+  }
+}
 
 function getHiddenPoiIds() {
   try {
@@ -54,8 +74,30 @@ function saveCategoryColorsToStorage(colors) {
   }
 }
 
-function getCategoryConfig(category) {
+function pickPoiColorFromSettingsCategory(category, poiId) {
+  var key = (category && String(category).trim().toLowerCase()) || '';
+  if (!key) return null;
+  var settings = typeof getMapSettings === 'function' ? getMapSettings() : {};
+  var rules = (settings && settings.poiCategoryColors) || {};
+  var shades = rules[key];
+  if (!Array.isArray(shades) || shades.length === 0) return null;
+  var valid = shades.filter(function (c) {
+    return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c.trim());
+  }).map(function (c) { return c.trim().toLowerCase(); });
+  if (valid.length === 0) return null;
+  if (valid.length === 1) return valid[0];
+  var hkey = (poiId != null && poiId !== '') ? (String(poiId) + '|' + key) : ('__cat__|' + key);
+  var hash = 0;
+  for (var i = 0; i < hkey.length; i++) hash = (hash * 31 + hkey.charCodeAt(i)) >>> 0;
+  return valid[hash % valid.length];
+}
+
+function getCategoryConfig(category, poiId) {
   var label = (category && String(category).trim()) ? String(category).trim() : 'Other';
+  var fromSettings = pickPoiColorFromSettingsCategory(label, poiId);
+  if (fromSettings) {
+    return { label: label, color: fromSettings };
+  }
   var colors = getCategoryColorsFromStorage();
   if (colors[label]) {
     return { label: label, color: colors[label] };
@@ -125,8 +167,8 @@ function savePoiToStorage(pois) {
   }
 }
 
-function createPoiIcon(category) {
-  const cfg = getCategoryConfig(category);
+function createPoiIcon(category, poiId) {
+  const cfg = getCategoryConfig(category, poiId);
   return L.divIcon({
     className: 'poi-marker',
     html: `<span style="background:${cfg.color};border:2px solid #fff;border-radius:50%;width:14px;height:14px;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.4)"></span>`,
@@ -144,8 +186,8 @@ function escapeHtmlPoi(s) {
 
 function createPoiMarker(poi) {
   const [lat, lng] = poi.position;
-  const marker = L.marker([lat, lng], { icon: createPoiIcon(poi.category) });
-  const catLabel = getCategoryConfig(poi.category).label;
+  const marker = L.marker([lat, lng], { icon: createPoiIcon(poi.category, poi.id) });
+  const catLabel = getCategoryConfig(poi.category, poi.id).label;
   var name = escapeHtmlPoi(poi.name || 'POI');
   var notes = poi.notes ? escapeHtmlPoi(poi.notes) : '';
   var imageUrl = (poi.imageUrl && String(poi.imageUrl).trim()) || '';
@@ -191,6 +233,27 @@ function initPoiLayer(map) {
   return poiLayerGroup;
 }
 
+function refreshAllPoiMarkerOpacities() {
+  if (!poiLayerGroup) return;
+  var hiddenIds = getHiddenPoiIds();
+  poiLayerGroup.eachLayer(function (layer) {
+    if (layer.poiData && layer.poiData.id) {
+      layer.setOpacity(hiddenIds.indexOf(layer.poiData.id) !== -1 ? 0 : 1);
+    }
+  });
+}
+
+function refreshAllPoiMarkerIcons() {
+  if (!poiLayerGroup) return;
+  var hiddenIds = getHiddenPoiIds();
+  poiLayerGroup.eachLayer(function (layer) {
+    var d = layer.poiData;
+    if (!d || !layer.setIcon) return;
+    layer.setIcon(createPoiIcon(d.category, d.id));
+    layer.setOpacity(hiddenIds.indexOf(d.id) !== -1 ? 0 : 1);
+  });
+}
+
 function setPoiItemVisibility(id, visible) {
   if (!poiLayerGroup || !id) return;
   var hiddenIds = getHiddenPoiIds();
@@ -200,19 +263,67 @@ function setPoiItemVisibility(id, visible) {
       hiddenIds = hiddenIds.filter(function (x) { return x !== id; });
       saveHiddenPoiIds(hiddenIds);
     }
-    poiLayerGroup.eachLayer(function (layer) {
-      if (layer.poiData && layer.poiData.id === id) layer.setOpacity(1);
-    });
   } else {
     if (idx === -1) {
       hiddenIds = hiddenIds.concat(id);
       saveHiddenPoiIds(hiddenIds);
     }
-    poiLayerGroup.eachLayer(function (layer) {
-      if (layer.poiData && layer.poiData.id === id) layer.setOpacity(0);
-    });
   }
+  refreshAllPoiMarkerOpacities();
   if (typeof renderPoiList === 'function') renderPoiList();
+}
+
+function togglePoiCategoryMapHidden(catKey) {
+  var pois = getPoiFromStorage().filter(function (p) {
+    var c = p.category && String(p.category).trim() ? p.category : 'Other';
+    return c === catKey;
+  });
+  if (!pois.length) return;
+  var hiddenIds = getHiddenPoiIds();
+  var allHidden = pois.every(function (p) { return p.id && hiddenIds.indexOf(p.id) !== -1; });
+  var next = hiddenIds.slice();
+  pois.forEach(function (p) {
+    if (!p.id) return;
+    var i = next.indexOf(p.id);
+    if (allHidden) {
+      if (i !== -1) next.splice(i, 1);
+    } else {
+      if (i === -1) next.push(p.id);
+    }
+  });
+  saveHiddenPoiIds(next);
+  refreshAllPoiMarkerOpacities();
+  if (typeof renderPoiList === 'function') renderPoiList();
+}
+
+function toggleAllPoisMapHidden() {
+  var pois = getPoiFromStorage();
+  var ids = pois.map(function (p) { return p.id; }).filter(Boolean);
+  if (!ids.length) return;
+  var hidden = getHiddenPoiIds();
+  var allHidden = ids.every(function (id) { return hidden.indexOf(id) !== -1; });
+  if (allHidden) saveHiddenPoiIds([]);
+  else saveHiddenPoiIds(ids.slice());
+  refreshAllPoiMarkerOpacities();
+  if (typeof renderPoiList === 'function') renderPoiList();
+}
+
+function updatePoiSectionHeaderButtons() {
+  var btn = document.getElementById('btn-hide-all-pois');
+  if (!btn) return;
+  var pois = getPoiFromStorage();
+  if (pois.length === 0) {
+    btn.disabled = true;
+    btn.textContent = '\u25cf';
+    btn.title = 'Hide all POIs on map';
+    return;
+  }
+  btn.disabled = false;
+  var hiddenIds = getHiddenPoiIds();
+  var ids = pois.map(function (p) { return p.id; }).filter(Boolean);
+  var allHidden = ids.length > 0 && ids.every(function (id) { return hiddenIds.indexOf(id) !== -1; });
+  btn.textContent = allHidden ? '\u25cb' : '\u25cf';
+  btn.title = allHidden ? 'Show all POIs on map' : 'Hide all POIs on map';
 }
 
 function startAddingPoi(map) {
@@ -222,7 +333,7 @@ function startAddingPoi(map) {
   editingPoiId = null;
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   document.getElementById('poi-delete').style.display = 'none';
-  document.getElementById('panel-poi-form').hidden = false;
+  if (typeof openWorkbench === 'function') openWorkbench('poi');
   refreshPoiCategoryDropdown();
   document.getElementById('poi-name').value = '';
   document.getElementById('poi-notes').value = '';
@@ -243,7 +354,7 @@ function startAddingPoi(map) {
     map.off('click', handler);
     isAddingPoi = false;
     pendingPoiLatLng = null;
-    document.getElementById('panel-poi-form').hidden = true;
+    if (typeof closeWorkbench === 'function') closeWorkbench();
   };
 }
 
@@ -274,7 +385,7 @@ function openPoiFormForEdit(id, mapInstance) {
   }
   document.getElementById('poi-form-title').textContent = 'Edit point of interest';
   document.getElementById('poi-delete').style.display = 'inline-block';
-  document.getElementById('panel-poi-form').hidden = false;
+  if (typeof openWorkbench === 'function') openWorkbench('poi');
   document.getElementById('poi-name').focus();
   if (mapInstance && poiLayerGroup) {
     poiLayerGroup.eachLayer((layer) => {
@@ -320,7 +431,7 @@ function updatePoiFromForm() {
   const pois = getPoiFromStorage().map((p) => (p.id === editingPoiId ? poi : p));
   savePoiToStorage(pois);
   editingPoiId = null;
-  document.getElementById('panel-poi-form').hidden = true;
+  if (typeof closeWorkbench === 'function') closeWorkbench();
   document.getElementById('poi-delete').style.display = 'none';
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   if (typeof renderPoiList === 'function') renderPoiList();
@@ -336,7 +447,7 @@ function deletePoi(id) {
   const pois = getPoiFromStorage().filter((p) => p.id !== id);
   savePoiToStorage(pois);
   editingPoiId = null;
-  document.getElementById('panel-poi-form').hidden = true;
+  if (typeof closeWorkbench === 'function') closeWorkbench();
   document.getElementById('poi-delete').style.display = 'none';
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   if (typeof renderPoiList === 'function') renderPoiList();
@@ -349,7 +460,10 @@ function renderPoiList() {
   container.innerHTML = '';
   const pois = getPoiFromStorage();
   if (empty) empty.hidden = pois.length > 0;
-  if (pois.length === 0) return;
+  if (pois.length === 0) {
+    updatePoiSectionHeaderButtons();
+    return;
+  }
   var hiddenIds = getHiddenPoiIds();
   var byCategory = {};
   pois.forEach(function (p) {
@@ -357,20 +471,60 @@ function renderPoiList() {
     if (!byCategory[cat]) byCategory[cat] = [];
     byCategory[cat].push(p);
   });
+  var categoryUiCollapsed = getPoiCategoryUiCollapsed();
   Object.keys(byCategory).sort().forEach(function (catKey) {
     var items = byCategory[catKey];
     var cfg = getCategoryConfig(catKey);
     var group = document.createElement('div');
     group.className = 'poi-category-group';
+    if (categoryUiCollapsed[catKey]) group.classList.add('is-collapsed');
+
+    var headerRow = document.createElement('div');
+    headerRow.className = 'poi-category-header-row';
+
+    var collapseBtn = document.createElement('button');
+    collapseBtn.type = 'button';
+    collapseBtn.className = 'section-collapse-btn poi-category-collapse';
+    collapseBtn.setAttribute('aria-expanded', categoryUiCollapsed[catKey] ? 'false' : 'true');
+    collapseBtn.innerHTML = categoryUiCollapsed[catKey] ? '&#9654;' : '&#9660;';
+    collapseBtn.title = categoryUiCollapsed[catKey] ? 'Expand category list' : 'Collapse category list';
+    collapseBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var o = getPoiCategoryUiCollapsed();
+      o[catKey] = !o[catKey];
+      savePoiCategoryUiCollapsed(o);
+      group.classList.toggle('is-collapsed', !!o[catKey]);
+      collapseBtn.setAttribute('aria-expanded', o[catKey] ? 'false' : 'true');
+      collapseBtn.innerHTML = o[catKey] ? '&#9654;' : '&#9660;';
+      collapseBtn.title = o[catKey] ? 'Expand category list' : 'Collapse category list';
+    });
+
+    var catAllHidden = items.every(function (p) { return p.id && hiddenIds.indexOf(p.id) !== -1; });
+    var mapToggleBtn = document.createElement('button');
+    mapToggleBtn.type = 'button';
+    mapToggleBtn.className = 'section-map-toggle-btn';
+    mapToggleBtn.textContent = catAllHidden ? '\u25cb' : '\u25cf';
+    mapToggleBtn.title = catAllHidden ? 'Show this category on map' : 'Hide this category on map';
+    mapToggleBtn.setAttribute('aria-label', mapToggleBtn.title);
+    mapToggleBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      togglePoiCategoryMapHidden(catKey);
+    });
+
     var heading = document.createElement('h3');
     heading.className = 'poi-category-heading';
     heading.textContent = cfg.label;
     heading.style.borderLeftColor = cfg.color;
+
+    headerRow.appendChild(collapseBtn);
+    headerRow.appendChild(mapToggleBtn);
+    headerRow.appendChild(heading);
+
     var ul = document.createElement('ul');
     ul.className = 'item-list';
     items.forEach(function (p) {
       var name = p.name || 'Unnamed';
-      var dotCfg = getCategoryConfig(p.category);
+      var dotCfg = getCategoryConfig(p.category, p.id);
       var hidden = p.id && hiddenIds.indexOf(p.id) !== -1;
       var li = document.createElement('li');
       li.setAttribute('data-id', p.id);
@@ -396,10 +550,14 @@ function renderPoiList() {
       li.appendChild(label);
       ul.appendChild(li);
     });
-    group.appendChild(heading);
-    group.appendChild(ul);
+    var itemsWrap = document.createElement('div');
+    itemsWrap.className = 'poi-category-items';
+    itemsWrap.appendChild(ul);
+    group.appendChild(headerRow);
+    group.appendChild(itemsWrap);
     container.appendChild(group);
   });
+  updatePoiSectionHeaderButtons();
 }
 
 
@@ -433,7 +591,6 @@ function savePoiFromForm() {
   savePoiToStorage(pois);
 
   pendingPoiLatLng = null;
-  document.getElementById('panel-poi-form').hidden = true;
   isAddingPoi = false;
   if (window._poiCancel) window._poiCancel();
   if (typeof renderPoiList === 'function') renderPoiList();

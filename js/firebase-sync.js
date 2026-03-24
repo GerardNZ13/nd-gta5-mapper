@@ -42,6 +42,7 @@
       categoryColors: data.categoryColors || {},
       hiddenTerritoryIds: data.hiddenTerritoryIds || [],
       hiddenPoiIds: data.hiddenPoiIds || [],
+      settings: data.settings || {},
     };
     if (mergeWithCurrent && typeof mergeImportData === 'function') {
       mergeImportData(payload);
@@ -58,6 +59,7 @@
       categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
       hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
       hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
+      settings: typeof getMapSettings === 'function' ? getMapSettings() : {},
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const docRef = db.collection(COLLECTION).doc(mapId);

@@ -11,7 +11,13 @@
     initPoiLayer(map);
     renderTerritoryList();
     renderPoiList();
+    if (typeof initTerritoryCategoryUi === 'function') initTerritoryCategoryUi();
+    if (typeof applyAllSidebarSectionCollapseFromStorage === 'function') {
+      applyAllSidebarSectionCollapseFromStorage();
+    }
+    if (typeof initWorkbench === 'function') initWorkbench();
     bindAppEvents();
+    if (typeof initSettingsPanel === 'function') initSettingsPanel();
     if (typeof initTutorial === 'function') initTutorial();
   }
 
@@ -23,6 +29,12 @@
   const btnExport = document.getElementById('btn-export');
   const btnImport = document.getElementById('btn-import');
   const inputImport = document.getElementById('input-import');
+  const btnSettings = document.getElementById('btn-settings');
+  if (btnSettings) {
+    btnSettings.addEventListener('click', function () {
+      if (typeof openWorkbench === 'function') openWorkbench('settings');
+    });
+  }
 
   btnDrawTerritory.addEventListener('click', () => {
     if (btnDrawTerritory.classList.contains('active')) {
@@ -32,7 +44,6 @@
     }
     btnAddPoi.classList.remove('active');
     if (window._poiCancel) window._poiCancel();
-    document.getElementById('panel-poi-form').hidden = true;
     btnDrawTerritory.classList.add('active');
     startDrawingTerritory(map);
   });
@@ -57,6 +68,11 @@
     deleteCurrentTerritory();
     btnDrawTerritory.classList.remove('active');
   });
+  document.getElementById('territory-redraw').addEventListener('click', () => {
+    btnAddPoi.classList.remove('active');
+    btnDrawTerritory.classList.add('active');
+    startRedrawingCurrentTerritory(map);
+  });
   document.getElementById('territory-cancel').addEventListener('click', () => {
     cancelDrawingTerritory();
     btnDrawTerritory.classList.remove('active');
@@ -75,6 +91,34 @@
     btnAddPoi.classList.remove('active');
   });
 
+  var btnCollapseTerr = document.getElementById('btn-collapse-territory-section');
+  if (btnCollapseTerr) {
+    btnCollapseTerr.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (typeof toggleSidebarSection === 'function') toggleSidebarSection('territories');
+    });
+  }
+  var btnCollapsePoi = document.getElementById('btn-collapse-poi-section');
+  if (btnCollapsePoi) {
+    btnCollapsePoi.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (typeof toggleSidebarSection === 'function') toggleSidebarSection('poi');
+    });
+  }
+  var btnHideAllTerr = document.getElementById('btn-hide-all-territories');
+  if (btnHideAllTerr) {
+    btnHideAllTerr.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (typeof toggleAllTerritoriesMapHidden === 'function') toggleAllTerritoriesMapHidden();
+    });
+  }
+  var btnHideAllPois = document.getElementById('btn-hide-all-pois');
+  if (btnHideAllPois) {
+    btnHideAllPois.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (typeof toggleAllPoisMapHidden === 'function') toggleAllPoisMapHidden();
+    });
+  }
   document.getElementById('territory-list').addEventListener('click', (e) => {
     if (e.target.closest('.item-visibility-toggle')) return;
     const li = e.target.closest('li[data-id]');
@@ -143,6 +187,7 @@
       categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
       hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
       hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
+      settings: typeof getMapSettings === 'function' ? getMapSettings() : {},
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');

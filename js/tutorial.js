@@ -16,25 +16,25 @@
       title: 'Add a point of interest (POI)',
       target: '#btn-add-poi',
       tryIt: '#btn-add-poi',
-      body: '<p><strong>Add POI</strong> places a marker on the map (e.g. store, mission, collectible).</p><p>Click <strong>Add POI</strong>, then click on the map where you want the pin. The sidebar form opens: enter <strong>Name</strong>, <strong>Category</strong> (or type a new one), and optional <strong>Notes</strong>, then <strong>Save</strong>.</p>',
+      body: '<p><strong>Add POI</strong> places a marker on the map (e.g. store, mission, collectible).</p><p>Click <strong>Add POI</strong>, then click on the map where you want the pin. A modal opens: enter <strong>Name</strong>, <strong>Category</strong> (or type a new one), and optional <strong>Notes</strong>, then <strong>Save</strong>.</p>',
     },
     {
       title: 'Add a territory (polygon)',
       target: '#btn-draw-territory',
       tryIt: '#btn-draw-territory',
-      body: '<p><strong>Draw territory</strong> creates a colored zone (e.g. gang turf, district).</p><p>Click <strong>Draw territory</strong>, then on the map <strong>click</strong> each corner of the polygon. <strong>Double-click</strong> to finish (need at least 3 points). In the form, set <strong>Name</strong>, <strong>Gang / Type</strong>, and <strong>Color</strong>, then <strong>Save</strong>.</p>',
+      body: '<p><strong>Draw territory</strong> creates a colored zone (e.g. gang turf, district).</p><p>Click <strong>Draw territory</strong>, then on the map <strong>click</strong> each corner of the polygon. <strong>Double-click</strong> to finish (need at least 3 points). In the modal, set <strong>Name</strong>, <strong>Gang / Type</strong>, and <strong>Color</strong>, then <strong>Save</strong>.</p>',
     },
     {
       title: 'Edit a detail',
       target: '.sidebar',
       tryIt: null,
-      body: '<p>To <strong>change</strong> a POI or territory: click its name in the <strong>Territories</strong> or <strong>Points of interest</strong> list in the sidebar, or click the marker/polygon on the map and choose <strong>Edit</strong> in the popup.</p><p>Update the fields and click <strong>Save</strong>. Territory shape cannot be changed—delete and redraw if needed.</p>',
+      body: '<p>To <strong>change</strong> a POI or territory: click its name in the <strong>Territories</strong> or <strong>Points of interest</strong> list in the sidebar, or click the marker/polygon on the map and choose <strong>Edit</strong> in the popup.</p><p>The same modal opens for edits. Update the fields and click <strong>Save</strong>. Territory shape cannot be changed—delete and redraw if needed.</p>',
     },
     {
       title: 'Remove a detail',
       target: null,
       tryIt: null,
-      body: '<p>To <strong>delete</strong> a POI or territory: click it on the map and click <strong>Delete</strong> in the popup, or open it for edit from the sidebar and click <strong>Delete</strong> there. Confirm when prompted.</p><p>If you use server sync, click <strong>Save to server</strong> after deleting so the server stays in sync.</p>',
+      body: '<p>To <strong>delete</strong> a POI or territory: click it on the map and click <strong>Delete</strong> in the popup, or open it for edit from the list and click <strong>Delete</strong> in the modal. Confirm when prompted.</p><p>If you use server sync, click <strong>Save to server</strong> after deleting so the server stays in sync.</p>',
     },
     {
       title: 'Import new changes',
@@ -52,7 +52,7 @@
       title: 'You’re all set',
       target: null,
       tryIt: null,
-      body: '<p><strong>Quick recap:</strong> Add POI / Draw territory to create; click an item (list or map) to edit or delete; Export to share a file, Import to merge someone’s file; use Load/Save to server when configured.</p><p>Close the tutorial anytime with <strong>Close</strong>, or reopen it with the <strong>Tutorial</strong> button in the header.</p>',
+      body: '<p><strong>Quick recap:</strong> Add POI / Draw territory to create; click an item (list or map) to edit or delete; use <strong>Settings</strong> for territory and POI category color palettes (saved locally and included in export/import); Export to share a file, Import to merge someone’s file; use Load/Save to server when configured.</p><p>Close the tutorial anytime with <strong>Close</strong>, or reopen it with the <strong>Tutorial</strong> button in the header.</p>',
     },
   ];
 

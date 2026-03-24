@@ -87,6 +87,9 @@ function mergeImportData(data) {
   if (data.hiddenPoiIds && Array.isArray(data.hiddenPoiIds) && typeof saveHiddenPoiIds === 'function') {
     saveHiddenPoiIds(data.hiddenPoiIds);
   }
+  if (data.settings && typeof mergeMapSettingsFromImport === 'function') {
+    mergeMapSettingsFromImport(data.settings);
+  }
   return { territories: territories.length, poi: poi.length };
 }
 
@@ -135,6 +138,7 @@ async function saveToServer() {
     categoryColors: typeof getCategoryColorsFromStorage === 'function' ? getCategoryColorsFromStorage() : {},
     hiddenTerritoryIds: typeof getHiddenTerritoryIds === 'function' ? getHiddenTerritoryIds() : [],
     hiddenPoiIds: typeof getHiddenPoiIds === 'function' ? getHiddenPoiIds() : [],
+    settings: typeof getMapSettings === 'function' ? getMapSettings() : {},
   };
   const method = (DATA_CONFIG && DATA_CONFIG.saveMethod) || 'POST';
   const res = await fetch(url, {
