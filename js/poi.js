@@ -331,27 +331,58 @@ function startAddingPoi(map) {
   isAddingPoi = true;
   pendingPoiLatLng = null;
   editingPoiId = null;
-  document.getElementById('poi-form-title').textContent = 'New point of interest';
-  document.getElementById('poi-delete').style.display = 'none';
-  if (typeof openWorkbench === 'function') openWorkbench('poi');
-  refreshPoiCategoryDropdown();
-  document.getElementById('poi-name').value = '';
-  document.getElementById('poi-notes').value = '';
-  var imgUrl = document.getElementById('poi-image-url');
-  if (imgUrl) imgUrl.value = '';
-  var sel = document.getElementById('poi-category');
-  if (sel.options.length > 0) sel.value = sel.options[0].value; else sel.value = '';
-  var customCat = document.getElementById('poi-category-custom');
-  if (customCat) customCat.value = '';
+
+  // 1. Change cursor to indicate the map is waiting for a click
+  map.getContainer().style.cursor = 'crosshair';
+
+  // NOTE: We DO NOT open the workbench here anymore. We wait.
 
   const handler = (e) => {
+    // 2. The user clicked the map! Capture location and clean up the listener.
     map.off('click', handler);
+    map.getContainer().style.cursor = ''; 
     pendingPoiLatLng = e.latlng;
-    document.getElementById('poi-name').focus();
+
+    // 3. Drop a temporary visual marker so they see where they clicked
+    if (window.tempPoiMarker) map.removeLayer(window.tempPoiMarker);
+    window.tempPoiMarker = L.marker(e.latlng, { opacity: 0.6 }).addTo(map);
+
+    // 4. NOW open the form to start entering details
+    document.getElementById('poi-form-title').textContent = 'New point of interest';
+    document.getElementById('poi-delete').style.display = 'none';
+    
+    if (typeof openWorkbench === 'function') openWorkbench('poi');
+    refreshPoiCategoryDropdown();
+    
+    // 5. Reset the form fields
+    document.getElementById('poi-name').value = '';
+    document.getElementById('poi-notes').value = '';
+    var imgUrl = document.getElementById('poi-image-url');
+    if (imgUrl) imgUrl.value = '';
+    
+    var sel = document.getElementById('poi-category');
+    if (sel.options.length > 0) sel.value = sel.options[0].value; else sel.value = '';
+    var customCat = document.getElementById('poi-category-custom');
+    if (customCat) customCat.value = '';
+
+    // 6. Focus the name field (slight delay ensures the UI has time to render)
+    setTimeout(() => {
+        const nameInput = document.getElementById('poi-name');
+        if (nameInput) nameInput.focus();
+    }, 50);
   };
+
+  // Start listening for the click
   map.once('click', handler);
+
+  // Global cancel fallback
   window._poiCancel = () => {
     map.off('click', handler);
+    map.getContainer().style.cursor = '';
+    if (window.tempPoiMarker) {
+      map.removeLayer(window.tempPoiMarker);
+      window.tempPoiMarker = null;
+    }
     isAddingPoi = false;
     pendingPoiLatLng = null;
     if (typeof closeWorkbench === 'function') closeWorkbench();
@@ -566,11 +597,12 @@ function cancelAddingPoi() {
 }
 
 function savePoiFromForm() {
-  if (!pendingPoiLatLng || !poiLayerGroup) return;
+  if (!pendingPoiLatLng || !poiLayerGroup) {
+      alert("Click on the map to set a location first.");
+      return;
+  }
+  
   var category = getCategoryFromForm();
-  if (!category || typeof category !== 'string') category = 'Other';
-  category = category.trim() || 'Other';
-
   const name = document.getElementById('poi-name').value.trim() || 'Unnamed';
   const notes = document.getElementById('poi-notes').value.trim();
   var imgUrlEl = document.getElementById('poi-image-url');
@@ -588,8 +620,18 @@ function savePoiFromForm() {
   poiLayerGroup.addLayer(createPoiMarker(poi));
   const pois = getPoiFromStorage();
   pois.push(poi);
+  
+  // 1. We call your perfectly fine storage function here
   savePoiToStorage(pois);
 
+  // 2. We clean up the map marker right AFTER saving
+  if (window.tempPoiMarker) {
+      const m = typeof getMap === 'function' ? getMap() : null;
+      if (m) m.removeLayer(window.tempPoiMarker);
+      window.tempPoiMarker = null;
+  }
+  
+  // 3. Reset the form state
   pendingPoiLatLng = null;
   isAddingPoi = false;
   if (window._poiCancel) window._poiCancel();
