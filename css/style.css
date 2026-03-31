@@ -727,6 +727,63 @@ label textarea {
   margin: 0.35rem 0 0;
 }
 
+/* ----- One-time "What's new" / changelog overlay ----- */
+.changelog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1rem;
+  pointer-events: none;
+}
+.changelog-overlay:not(.hidden) {
+  pointer-events: auto;
+}
+.changelog-card {
+  width: 100%;
+  max-width: 380px;
+  margin-top: 0.5rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--bg-panel);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  font-size: 0.85rem;
+}
+.changelog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.changelog-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.changelog-close-btn {
+  padding: 0.15rem 0.45rem;
+  min-width: auto;
+  font-size: 0.75rem;
+}
+.changelog-body p {
+  margin: 0.35rem 0;
+  color: var(--text-muted);
+}
+.changelog-body ul {
+  margin: 0.35rem 0 0.15rem;
+  padding-left: 1.1rem;
+}
+.changelog-body li {
+  margin-bottom: 0.2rem;
+}
+.changelog-body code {
+  font-size: 0.8rem;
+}
+
 /* ----- Interactive tutorial ----- */
 .tutorial-overlay {
   position: fixed;

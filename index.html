@@ -155,6 +155,24 @@
       </div>
     </div>
 
+    <div id="changelog-overlay" class="changelog-overlay hidden" aria-hidden="true">
+      <div class="changelog-card" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+        <div class="changelog-header">
+          <h2 id="changelog-title" class="changelog-title">What&rsquo;s new</h2>
+          <button type="button" id="changelog-close" class="btn btn-outline changelog-close-btn" aria-label="Close what&rsquo;s new panel">X</button>
+        </div>
+        <div class="changelog-body">
+          <p>Recent changes in this build:</p>
+          <ul>
+            <li>Territory and POI forms now open in a focused modal workbench instead of the sidebar.</li>
+            <li>Territory and POI <strong>categories</strong> can define color palettes (multiple shades) under <strong>Settings</strong>.</li>
+            <li>Settings are saved locally and included in <strong>Export / Import</strong> and server sync.</li>
+          </ul>
+          <p>You&rsquo;ll only see this summary once per update. Use the <strong>Settings</strong> button in the header anytime to adjust palettes.</p>
+        </div>
+      </div>
+    </div>
+
     <div id="tutorial-overlay" class="tutorial-overlay hidden" aria-hidden="true">
       <div class="tutorial-backdrop"></div>
       <div class="tutorial-card">
@@ -189,6 +207,7 @@
   <script src="js/firebase-sync.js"></script>
   <script src="js/sidebar-ui.js"></script>
   <script src="js/tutorial.js"></script>
+  <script src="js/changelog.js"></script>
   <script src="js/app.js"></script>
   <script>
     if (typeof AUTH_CONFIG !== 'undefined' && AUTH_CONFIG && AUTH_CONFIG.requireAuth) {

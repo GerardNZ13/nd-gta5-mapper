@@ -19,6 +19,7 @@
     bindAppEvents();
     if (typeof initSettingsPanel === 'function') initSettingsPanel();
     if (typeof initTutorial === 'function') initTutorial();
+    if (typeof initChangelogOverlay === 'function') initChangelogOverlay();
   }
 
   function bindAppEvents() {
@@ -44,6 +45,7 @@
     }
     btnAddPoi.classList.remove('active');
     if (window._poiCancel) window._poiCancel();
+    if (typeof closeWorkbench === 'function') closeWorkbench();
     btnDrawTerritory.classList.add('active');
     startDrawingTerritory(map);
   });
@@ -56,6 +58,7 @@
     }
     btnDrawTerritory.classList.remove('active');
     cancelDrawingTerritory();
+    if (typeof closeWorkbench === 'function') closeWorkbench();
     btnAddPoi.classList.add('active');
     startAddingPoi(map);
   });
