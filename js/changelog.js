@@ -5,7 +5,7 @@
 (function () {
   var CHANGELOG_KEY = 'gta5-map-changelog-version';
   // Bump this when you want the overlay to show again on the next load.
-  var CURRENT_CHANGELOG_VERSION = '2026-03-25-workbench-poi-settings';
+  var CURRENT_CHANGELOG_VERSION = '2026-04-06-profiles-heatmap-snapshots';
 
   function getLastSeenVersion() {
     try {

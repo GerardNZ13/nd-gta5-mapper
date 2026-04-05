@@ -7,6 +7,7 @@
 
   function initMapApp() {
     map = initMap();
+    if (typeof updateProfileIndicator === 'function') updateProfileIndicator();
     initTerritoriesLayer(map);
     initPoiLayer(map);
     renderTerritoryList();
@@ -20,6 +21,11 @@
     if (typeof initSettingsPanel === 'function') initSettingsPanel();
     if (typeof initTutorial === 'function') initTutorial();
     if (typeof initChangelogOverlay === 'function') initChangelogOverlay();
+    if (typeof initProfileSelectorUI === 'function') initProfileSelectorUI();
+    if (typeof initSnapshotAutosaveAndUI === 'function') initSnapshotAutosaveAndUI();
+    if (typeof initMapExtras === 'function') initMapExtras();
+    if (typeof initOptionsDrawer === 'function') initOptionsDrawer();
+    if (typeof initMapSearchUI === 'function') initMapSearchUI();
   }
 
   function bindAppEvents() {
@@ -124,6 +130,7 @@
   }
   document.getElementById('territory-list').addEventListener('click', (e) => {
     if (e.target.closest('.item-visibility-toggle')) return;
+    if (e.target.closest('.item-quick-add-poi')) return;
     const li = e.target.closest('li[data-id]');
     if (li) {
       btnDrawTerritory.classList.remove('active');
@@ -135,6 +142,7 @@
   });
   document.getElementById('poi-list-container').addEventListener('click', (e) => {
     if (e.target.closest('.item-visibility-toggle')) return;
+    if (e.target.closest('.item-dup-poi')) return;
     const li = e.target.closest('li[data-id]');
     if (li) {
       btnDrawTerritory.classList.remove('active');
@@ -184,6 +192,7 @@
   function exportData() {
     const data = {
       version: 2,
+      profileId: typeof getActiveProfileId === 'function' ? getActiveProfileId() : 'default',
       territories: getTerritoriesFromStorage(),
       poi: getPoiFromStorage(),
       categories: typeof getAllCategoriesFromPois === 'function' ? getAllCategoriesFromPois() : [],
@@ -205,6 +214,7 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
+        if (typeof savePreImportSnapshot === 'function') savePreImportSnapshot();
         const result = mergeImportData(data);
         alert('Merged: ' + result.territories + ' territories, ' + result.poi + ' POIs. Same IDs = updated; new IDs = added.');
         window.location.reload();
@@ -260,6 +270,13 @@
     if (file) importData(file);
     e.target.value = '';
   });
+
+  var clusterChk = document.getElementById('layer-poi-cluster');
+  if (clusterChk) {
+    clusterChk.addEventListener('change', function () {
+      if (typeof rebuildPoiLayer === 'function') rebuildPoiLayer(map);
+    });
+  }
   }
 
   var requireAuth = typeof AUTH_CONFIG !== 'undefined' && AUTH_CONFIG && AUTH_CONFIG.requireAuth === true;

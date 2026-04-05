@@ -10,8 +10,12 @@ let pendingTerritoryLayer = null;
 let editingTerritoryId = null;
 let redrawTerritoryId = null;
 
-const TERRITORY_STORAGE_KEY = 'gta5-map-territories';
-const HIDDEN_TERRITORIES_KEY = 'gta5-map-hidden-territories';
+function keyTerritories() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-territories') : 'gta5-map-territories';
+}
+function keyHiddenTerritories() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-hidden-territories') : 'gta5-map-hidden-territories';
+}
 
 function normalizeTerritoryCategory(category) {
   return (category && String(category).trim().toLowerCase()) || '';
@@ -70,7 +74,7 @@ function initTerritoryCategoryUi() {
 
 function getHiddenTerritoryIds() {
   try {
-    const raw = localStorage.getItem(HIDDEN_TERRITORIES_KEY);
+    const raw = localStorage.getItem(keyHiddenTerritories());
     const arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr : [];
   } catch {
@@ -80,7 +84,7 @@ function getHiddenTerritoryIds() {
 
 function saveHiddenTerritoryIds(ids) {
   try {
-    localStorage.setItem(HIDDEN_TERRITORIES_KEY, JSON.stringify(Array.isArray(ids) ? ids : []));
+    localStorage.setItem(keyHiddenTerritories(), JSON.stringify(Array.isArray(ids) ? ids : []));
   } catch (e) {
     console.warn('Failed to save hidden territories', e);
   }
@@ -92,7 +96,7 @@ function generateId() {
 
 function getTerritoriesFromStorage() {
   try {
-    const raw = localStorage.getItem(TERRITORY_STORAGE_KEY);
+    const raw = localStorage.getItem(keyTerritories());
     const list = raw ? JSON.parse(raw) : [];
     let changed = false;
     const out = list.map((f) => {
@@ -111,7 +115,7 @@ function getTerritoriesFromStorage() {
 }
 
 function saveTerritoriesToStorage(territories) {
-  localStorage.setItem(TERRITORY_STORAGE_KEY, JSON.stringify(territories));
+  localStorage.setItem(keyTerritories(), JSON.stringify(territories));
 }
 
 function latLngsToGeo(latlngs) {
@@ -383,9 +387,29 @@ function renderTerritoryList() {
   const empty = document.getElementById('territory-list-empty');
   if (!list) return;
   list.innerHTML = '';
-  const territories = getTerritoriesFromStorage();
+  const allTerritories = getTerritoriesFromStorage();
+  var q = (typeof getMapSearchQuery === 'function' ? getMapSearchQuery() : '').trim();
+  var territories = allTerritories;
+  if (q) {
+    territories = allTerritories.filter(function (f) {
+      if (typeof territoryMatchesSearch === 'function') return territoryMatchesSearch(f, q);
+      var ql = q.toLowerCase();
+      var p = f.properties || {};
+      var hay = [p.name, p.category, p.gang].filter(Boolean).join(' ').toLowerCase();
+      return hay.indexOf(ql) !== -1;
+    });
+  }
   const hiddenIds = getHiddenTerritoryIds();
-  if (empty) empty.hidden = territories.length > 0;
+  if (empty) {
+    empty.hidden = territories.length > 0;
+    if (allTerritories.length === 0) {
+      empty.textContent = 'None yet. Use Draw territory to add.';
+    } else if (territories.length === 0) {
+      empty.textContent = 'No matching territories.';
+    } else {
+      empty.textContent = 'None yet. Use Draw territory to add.';
+    }
+  }
   territories.forEach((f) => {
     const id = f.properties && f.properties.id;
     const name = (f.properties && f.properties.name) || 'Unnamed';
@@ -395,6 +419,16 @@ function renderTerritoryList() {
     const li = document.createElement('li');
     li.setAttribute('data-id', id);
     if (hidden) li.classList.add('item-hidden');
+    const quickPoi = document.createElement('button');
+    quickPoi.type = 'button';
+    quickPoi.className = 'item-quick-add-poi';
+    quickPoi.title = 'Add POI (map click); category prefilled from this territory';
+    quickPoi.setAttribute('aria-label', quickPoi.title);
+    quickPoi.textContent = '+';
+    quickPoi.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (typeof prepareAddPoiFromTerritory === 'function') prepareAddPoiFromTerritory(id);
+    });
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'item-visibility-toggle';
@@ -411,6 +445,7 @@ function renderTerritoryList() {
     const label = document.createElement('span');
     label.className = 'item-name';
     label.textContent = category ? (name + ' [' + category + ']') : name;
+    li.appendChild(quickPoi);
     li.appendChild(toggle);
     li.appendChild(dot);
     li.appendChild(label);
@@ -565,4 +600,29 @@ function startDrawingTerritoryManual(map) {
     redrawTerritoryId = null;
   };
 }
+
+function prepareAddPoiFromTerritory(territoryId) {
+  var map = typeof getMap === 'function' ? getMap() : null;
+  var f = getTerritoryById(territoryId);
+  if (!f) return;
+  var cat = (f.properties && f.properties.category) ? String(f.properties.category).trim() : '';
+  window._prefillPoiCategory = cat;
+  if (typeof cancelDrawingTerritory === 'function') cancelDrawingTerritory();
+  if (typeof cancelAddingPoi === 'function') cancelAddingPoi();
+  if (typeof closeWorkbench === 'function') closeWorkbench();
+  if (map && territoryLayerGroup) {
+    territoryLayerGroup.eachLayer(function (layer) {
+      if (layer.feature && layer.feature.properties && layer.feature.properties.id === territoryId) {
+        map.fitBounds(layer.getBounds(), { padding: [36, 36], maxZoom: 2 });
+      }
+    });
+  }
+  var btnDraw = document.getElementById('btn-draw-territory');
+  if (btnDraw) btnDraw.classList.remove('active');
+  var btnPoi = document.getElementById('btn-add-poi');
+  if (btnPoi) btnPoi.classList.add('active');
+  if (typeof startAddingPoi === 'function' && map) startAddingPoi(map);
+}
+
+window.prepareAddPoiFromTerritory = prepareAddPoiFromTerritory;
 

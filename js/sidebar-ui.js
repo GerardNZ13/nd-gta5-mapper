@@ -1,11 +1,13 @@
 /**
  * Sidebar section minimize (collapse list only; map unchanged). Persisted in localStorage.
  */
-const SIDEBAR_SECTIONS_KEY = 'gta5-map-ui-sidebar-sections';
+function sidebarSectionsStorageKey() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-ui-sidebar-sections') : 'gta5-map-ui-sidebar-sections';
+}
 
 function getSidebarSectionsCollapsed() {
   try {
-    var r = localStorage.getItem(SIDEBAR_SECTIONS_KEY);
+    var r = localStorage.getItem(sidebarSectionsStorageKey());
     var o = r ? JSON.parse(r) : {};
     return { territories: !!o.territories, poi: !!o.poi };
   } catch {
@@ -17,7 +19,7 @@ function setSidebarSectionCollapsed(section, collapsed) {
   var o = getSidebarSectionsCollapsed();
   o[section] = collapsed;
   try {
-    localStorage.setItem(SIDEBAR_SECTIONS_KEY, JSON.stringify(o));
+    localStorage.setItem(sidebarSectionsStorageKey(), JSON.stringify(o));
   } catch (e) {
     console.warn('sidebar ui save', e);
   }

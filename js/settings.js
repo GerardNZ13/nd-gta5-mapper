@@ -1,7 +1,9 @@
 /**
  * App settings (territory + POI category color palettes). localStorage + export/import + server.
  */
-const MAP_SETTINGS_KEY = 'gta5-map-settings';
+function mapSettingsStorageKey() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-settings') : 'gta5-map-settings';
+}
 
 const DEFAULT_MAP_SETTINGS = {
   territoryCategoryColors: {
@@ -41,7 +43,7 @@ function cloneDefaultSettings() {
 function getMapSettings() {
   try {
     var defaults = cloneDefaultSettings();
-    var raw = localStorage.getItem(MAP_SETTINGS_KEY);
+    var raw = localStorage.getItem(mapSettingsStorageKey());
     if (!raw) {
       return {
         territoryCategoryColors: defaults.territoryCategoryColors,
@@ -71,7 +73,7 @@ function persistMapSettings(settingsObj) {
   try {
     var t = sanitizeTerritoryCategoryColors(settingsObj.territoryCategoryColors || {});
     var p = sanitizeTerritoryCategoryColors(settingsObj.poiCategoryColors || {});
-    localStorage.setItem(MAP_SETTINGS_KEY, JSON.stringify({
+    localStorage.setItem(mapSettingsStorageKey(), JSON.stringify({
       territoryCategoryColors: t,
       poiCategoryColors: p,
     }));
@@ -231,7 +233,7 @@ function initSettingsPanel() {
     if (Object.keys(terr).length === 0 && Object.keys(poi).length === 0) {
       if (!confirm('No valid rows in either section. Clear all custom map settings (territory + POI rules)?')) return;
       try {
-        localStorage.removeItem(MAP_SETTINGS_KEY);
+        localStorage.removeItem(mapSettingsStorageKey());
       } catch (e) {
         console.warn(e);
       }
@@ -259,7 +261,7 @@ function initSettingsPanel() {
   btnReset.addEventListener('click', function () {
     if (!confirm('Reset territory rules to built-in defaults and clear all POI category palette rules?')) return;
     try {
-      localStorage.removeItem(MAP_SETTINGS_KEY);
+      localStorage.removeItem(mapSettingsStorageKey());
     } catch (e) {
       console.warn(e);
     }
@@ -290,3 +292,5 @@ function initSettingsPanel() {
     }
   });
 }
+
+window.persistMapSettings = persistMapSettings;

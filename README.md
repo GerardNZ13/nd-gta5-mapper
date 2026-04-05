@@ -19,9 +19,30 @@ A custom interactive map for GTA 5 that supports:
    Open http://localhost:3000
 
 3. **Use the map**
-   - Toggle **Territories** and **Points of interest** in the layer panel.
-   - Use **Draw territory** to add gang/region polygons; **Add POI** to place markers.
-   - Data is saved in your browser (localStorage).
+   - Open **Map options** in the header for **profiles**, **layer toggles** (territories, POIs, heatmap, clustering, territory fade), and **snapshots**.
+   - Use **Draw territory** to add gang/region polygons; **Add POI** to place markers (click the map first, then fill the form in the modal).
+   - Data is saved in your browser (**localStorage**) for the **active profile** (see below).
+
+## Profiles
+
+- **Main map (default)** is the usual place for your data. You can add **extra profiles** (sandboxes or alternate maps) under **Map options** → **New profile**.
+- **Export / Import** and **Save to server** / **Load from server** always apply to **whichever profile is active**. The export JSON includes a `profileId` field for reference.
+- **Copy from another profile** (in Map options) can **merge** (same rules as file import) or **replace** the current profile with a copy of another.
+- The header shows a small badge (**Main view** vs **Personal view · …**) so you know which profile is loaded.
+
+## Search
+
+- Use the **search box** in the header to filter the **Territories** and **Points of interest** lists.
+- **Territories** match on name, category/group, and gang/type.
+- **POIs** match on name, category, **notes**, and image URL text.
+- Matching is **case-insensitive substring**: your search text must appear **in order** as one contiguous piece of that combined text.  
+  - Good for comma-separated notes like `car parts, blow torch, rubber` — search **`rubber`**, **`car parts`**, or **`blow torch`** separately.  
+  - A single search like `car rubber` will **not** match unless that exact phrase appears in the notes.
+- Press **Enter** to pan/zoom the map to the **first** matching territory or POI.
+
+## Settings (category colors)
+
+- **Settings** in the header opens the **workbench** where you set **territory** and **POI** category color palettes (multiple shades per category). These are saved locally and included in **export/import** and server sync.
 
 ## Sharing and merging data
 
@@ -100,4 +121,7 @@ Use any full-map image (PNG/JPG). If you don’t have one, search for “GTA 5 f
 
 - Leaflet for the map and drawing
 - Vanilla JS, no build step
-- Data: localStorage; export/import with merge-by-ID; optional server URL for shared sync
+- Data: localStorage (per profile); export/import with merge-by-ID; optional Firebase/REST for sync
+- **Undo import** (header): restores the snapshot taken just before your last **Import data (merge)**. Rolling autosave runs about every five minutes (per profile).
+
+See **TUTORIAL.md** for a step-by-step guide (adding POIs/territories, import/export, search, and profiles).

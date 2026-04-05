@@ -6,14 +6,22 @@ let isAddingPoi = false;
 let pendingPoiLatLng = null;
 let editingPoiId = null;
 
-const POI_STORAGE_KEY = 'gta5-map-poi';
-const CATEGORY_COLORS_STORAGE_KEY = 'gta5-map-poi-category-colors';
-const HIDDEN_POI_KEY = 'gta5-map-hidden-poi';
-const POI_CATEGORY_UI_COLLAPSED_KEY = 'gta5-map-ui-poi-category-collapsed';
+function keyPoi() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-poi') : 'gta5-map-poi';
+}
+function keyPoiCategoryColors() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-poi-category-colors') : 'gta5-map-poi-category-colors';
+}
+function keyHiddenPoi() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-hidden-poi') : 'gta5-map-hidden-poi';
+}
+function keyPoiCategoryUiCollapsed() {
+  return typeof profileScopedKey === 'function' ? profileScopedKey('gta5-map-ui-poi-category-collapsed') : 'gta5-map-ui-poi-category-collapsed';
+}
 
 function getPoiCategoryUiCollapsed() {
   try {
-    var raw = localStorage.getItem(POI_CATEGORY_UI_COLLAPSED_KEY);
+    var raw = localStorage.getItem(keyPoiCategoryUiCollapsed());
     if (!raw) return {};
     var o = JSON.parse(raw);
     return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
@@ -24,7 +32,7 @@ function getPoiCategoryUiCollapsed() {
 
 function savePoiCategoryUiCollapsed(obj) {
   try {
-    localStorage.setItem(POI_CATEGORY_UI_COLLAPSED_KEY, JSON.stringify(obj && typeof obj === 'object' ? obj : {}));
+    localStorage.setItem(keyPoiCategoryUiCollapsed(), JSON.stringify(obj && typeof obj === 'object' ? obj : {}));
   } catch (e) {
     console.warn('poi category ui collapsed save', e);
   }
@@ -32,7 +40,7 @@ function savePoiCategoryUiCollapsed(obj) {
 
 function getHiddenPoiIds() {
   try {
-    var raw = localStorage.getItem(HIDDEN_POI_KEY);
+    var raw = localStorage.getItem(keyHiddenPoi());
     var arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr : [];
   } catch {
@@ -42,7 +50,7 @@ function getHiddenPoiIds() {
 
 function saveHiddenPoiIds(ids) {
   try {
-    localStorage.setItem(HIDDEN_POI_KEY, JSON.stringify(Array.isArray(ids) ? ids : []));
+    localStorage.setItem(keyHiddenPoi(), JSON.stringify(Array.isArray(ids) ? ids : []));
   } catch (e) {
     console.warn('Failed to save hidden POIs', e);
   }
@@ -59,7 +67,7 @@ var CUSTOM_CATEGORY_COLOR = '#94a3b8';
 
 function getCategoryColorsFromStorage() {
   try {
-    var raw = localStorage.getItem(CATEGORY_COLORS_STORAGE_KEY);
+    var raw = localStorage.getItem(keyPoiCategoryColors());
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -68,7 +76,7 @@ function getCategoryColorsFromStorage() {
 
 function saveCategoryColorsToStorage(colors) {
   try {
-    localStorage.setItem(CATEGORY_COLORS_STORAGE_KEY, JSON.stringify(colors));
+    localStorage.setItem(keyPoiCategoryColors(), JSON.stringify(colors));
   } catch (err) {
     console.error('Failed to save category colors:', err);
   }
@@ -148,7 +156,7 @@ function refreshPoiCategoryDropdown() {
 
 function getPoiFromStorage() {
   try {
-    const raw = localStorage.getItem(POI_STORAGE_KEY);
+    const raw = localStorage.getItem(keyPoi());
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -158,7 +166,7 @@ function getPoiFromStorage() {
 function savePoiToStorage(pois) {
   try {
     var json = JSON.stringify(pois);
-    localStorage.setItem(POI_STORAGE_KEY, json);
+    localStorage.setItem(keyPoi(), json);
   } catch (err) {
     console.error('Failed to save POIs to localStorage:', err);
     if (err && err.name === 'QuotaExceededError') {
@@ -213,10 +221,23 @@ function createPoiMarker(poi) {
   return marker;
 }
 
-function initPoiLayer(map) {
-  poiLayerGroup = new L.LayerGroup();
-  map.addLayer(poiLayerGroup);
+function createPoiParentGroup(map) {
+  var el = document.getElementById('layer-poi-cluster');
+  var useCluster = el && el.checked && typeof L.markerClusterGroup === 'function';
+  if (useCluster) {
+    return L.markerClusterGroup({
+      maxClusterRadius: 55,
+      disableClusteringAtZoom: 1,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+    });
+  }
+  return L.layerGroup();
+}
 
+function loadAllPoisIntoCurrentGroup() {
+  if (!poiLayerGroup) return;
+  if (poiLayerGroup.clearLayers) poiLayerGroup.clearLayers();
   const pois = getPoiFromStorage();
   const hiddenIds = getHiddenPoiIds();
   pois.forEach((poi) => {
@@ -229,8 +250,26 @@ function initPoiLayer(map) {
       console.warn('Skip invalid POI', poi, e);
     }
   });
+}
 
+function initPoiLayer(map) {
+  poiLayerGroup = createPoiParentGroup(map);
+  map.addLayer(poiLayerGroup);
+  loadAllPoisIntoCurrentGroup();
   return poiLayerGroup;
+}
+
+function rebuildPoiLayer(map) {
+  var m = map || (typeof getMap === 'function' ? getMap() : null);
+  if (!m) return;
+  if (poiLayerGroup) {
+    try {
+      m.removeLayer(poiLayerGroup);
+    } catch (e) {}
+  }
+  poiLayerGroup = null;
+  initPoiLayer(m);
+  if (typeof rebuildHeatmapLayer === 'function') rebuildHeatmapLayer();
 }
 
 function refreshAllPoiMarkerOpacities() {
@@ -364,6 +403,10 @@ function startAddingPoi(map) {
     if (sel.options.length > 0) sel.value = sel.options[0].value; else sel.value = '';
     var customCat = document.getElementById('poi-category-custom');
     if (customCat) customCat.value = '';
+    if (window._prefillPoiCategory) {
+      if (customCat) customCat.value = window._prefillPoiCategory;
+      window._prefillPoiCategory = '';
+    }
 
     // 6. Focus the name field (slight delay ensures the UI has time to render)
     setTimeout(() => {
@@ -391,6 +434,24 @@ function startAddingPoi(map) {
 
 function getPoiById(id) {
   return getPoiFromStorage().find((p) => p.id === id) || null;
+}
+
+function duplicatePoi(id) {
+  var poi = getPoiById(id);
+  if (!poi || !poi.position || !Array.isArray(poi.position)) return;
+  var copy = JSON.parse(JSON.stringify(poi));
+  copy.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  copy.name = (poi.name || 'POI') + ' (copy)';
+  copy.position = [
+    poi.position[0] + (Math.random() - 0.5) * 0.002,
+    poi.position[1] + (Math.random() - 0.5) * 0.002,
+  ];
+  var pois = getPoiFromStorage();
+  pois.push(copy);
+  savePoiToStorage(pois);
+  if (poiLayerGroup) poiLayerGroup.addLayer(createPoiMarker(copy));
+  if (typeof renderPoiList === 'function') renderPoiList();
+  if (typeof rebuildHeatmapLayer === 'function') rebuildHeatmapLayer();
 }
 
 function openPoiFormForEdit(id, mapInstance) {
@@ -466,6 +527,7 @@ function updatePoiFromForm() {
   document.getElementById('poi-delete').style.display = 'none';
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   if (typeof renderPoiList === 'function') renderPoiList();
+  if (typeof rebuildHeatmapLayer === 'function') rebuildHeatmapLayer();
 }
 
 function deletePoi(id) {
@@ -482,6 +544,7 @@ function deletePoi(id) {
   document.getElementById('poi-delete').style.display = 'none';
   document.getElementById('poi-form-title').textContent = 'New point of interest';
   if (typeof renderPoiList === 'function') renderPoiList();
+  if (typeof rebuildHeatmapLayer === 'function') rebuildHeatmapLayer();
 }
 
 function renderPoiList() {
@@ -489,8 +552,27 @@ function renderPoiList() {
   const empty = document.getElementById('poi-list-empty');
   if (!container) return;
   container.innerHTML = '';
-  const pois = getPoiFromStorage();
-  if (empty) empty.hidden = pois.length > 0;
+  const allPois = getPoiFromStorage();
+  var q = (typeof getMapSearchQuery === 'function' ? getMapSearchQuery() : '').trim();
+  var pois = allPois;
+  if (q) {
+    pois = allPois.filter(function (p) {
+      if (typeof poiMatchesSearch === 'function') return poiMatchesSearch(p, q);
+      var ql = q.toLowerCase();
+      var hay = [p.name, p.category, p.notes, p.imageUrl].filter(Boolean).join(' ').toLowerCase();
+      return hay.indexOf(ql) !== -1;
+    });
+  }
+  if (empty) {
+    empty.hidden = pois.length > 0;
+    if (allPois.length === 0) {
+      empty.textContent = 'None yet. Use Add POI to add.';
+    } else if (pois.length === 0) {
+      empty.textContent = 'No matching POIs.';
+    } else {
+      empty.textContent = 'None yet. Use Add POI to add.';
+    }
+  }
   if (pois.length === 0) {
     updatePoiSectionHeaderButtons();
     return;
@@ -570,6 +652,16 @@ function renderPoiList() {
         e.stopPropagation();
         setPoiItemVisibility(p.id, hidden);
       });
+      var dupBtn = document.createElement('button');
+      dupBtn.type = 'button';
+      dupBtn.className = 'item-dup-poi';
+      dupBtn.title = 'Duplicate POI';
+      dupBtn.setAttribute('aria-label', 'Duplicate POI');
+      dupBtn.textContent = '\u2398';
+      dupBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (typeof duplicatePoi === 'function') duplicatePoi(p.id);
+      });
       var dot = document.createElement('span');
       dot.className = 'item-dot';
       dot.style.background = dotCfg.color;
@@ -577,6 +669,7 @@ function renderPoiList() {
       label.className = 'item-name';
       label.textContent = name;
       li.appendChild(toggle);
+      li.appendChild(dupBtn);
       li.appendChild(dot);
       li.appendChild(label);
       ul.appendChild(li);
@@ -636,6 +729,7 @@ function savePoiFromForm() {
   isAddingPoi = false;
   if (window._poiCancel) window._poiCancel();
   if (typeof renderPoiList === 'function') renderPoiList();
+  if (typeof rebuildHeatmapLayer === 'function') rebuildHeatmapLayer();
 }
 
 function closePoiPopup(id) {
@@ -665,3 +759,6 @@ function handlePoiSave() {
     savePoiFromForm();
   }
 }
+
+window.rebuildPoiLayer = rebuildPoiLayer;
+window.duplicatePoi = duplicatePoi;

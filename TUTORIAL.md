@@ -9,25 +9,48 @@ Step-by-step guide for **adding**, **changing**, and **removing** map details (t
 ### Add a point of interest (POI)
 
 1. Click **Add POI** in the header (the button becomes active).
-2. Click on the map where you want the marker. The sidebar form opens.
+2. Click on the map where you want the marker. A **modal** opens for the POI form.
 3. Fill in:
    - **Name** – e.g. "Ammu-Nation", "Hidden package"
    - **Category** – pick from the dropdown (existing categories) or type a new one in "Or type category name" (that overrides the dropdown).
-   - **Notes** – optional (e.g. "North entrance", "Only at night").
-4. Click **Save**. The POI appears on the map and in the "Points of interest" list. Data is saved to your browser (localStorage).
+   - **Notes** – optional. Good for extra detail (e.g. what a shop sells or buys). **Notes are included in the header search** (see [Search](#search) below).
+4. Click **Save**. The POI appears on the map and in the "Points of interest" list. Data is saved to your browser (localStorage) for the **active profile**.
 
 ### Add a territory (polygon)
 
 1. Click **Draw territory** in the header (the button becomes active).
 2. On the map, **click** to place each corner of the polygon. You’ll see a dashed line between points.
-3. **Double-click** when you’re done (you need at least 3 points). The territory form opens in the sidebar.
+3. **Double-click** when you’re done (you need at least 3 points). The territory form opens in a **modal**.
 4. Fill in:
    - **Name** – e.g. "Ballas turf", "Downtown"
    - **Gang / Type** – e.g. "Ballas", "Neutral"
    - **Color** – use the color picker for the polygon fill and border.
 5. Click **Save**. The territory appears on the map and in the "Territories" list. Data is saved to localStorage.
 
-**Tip:** Use **Layers** in the sidebar to show/hide **Territories** and **Points of interest** without deleting anything.
+**Tip:** Open **Map options** in the header to show/hide **Territories** and **Points of interest**, turn on the **POI heatmap** or **marker clustering**, and other layer options—without deleting anything.
+
+---
+
+## Search
+
+The **search box** in the header filters the **Territories** and **Points of interest** lists in the sidebar.
+
+| What you type | What it matches |
+|----------------|-----------------|
+| Territories | Name, **Category / Group**, **Gang / Type** |
+| POIs | Name, category, **Notes**, image URL text |
+
+- Search is **case-insensitive** and looks for your text as one **continuous substring** in those fields (for POIs, name, category, notes, and URL are combined for matching).
+- **Comma-separated notes** (e.g. `car parts, blow torch, rubber, scrap`) work well: search for **`rubber`**, **`car parts`**, or **`torch`** as separate searches. Searching two words that don’t appear next to each other in the text (e.g. `car rubber`) may not match unless that exact phrase exists.
+- Press **Enter** to move the map to the **first** matching territory (zoom to its bounds) or POI (pan to the pin).
+
+---
+
+## Profiles and Map options
+
+- **Map options** (header) opens a slide-in panel: **profile** picker, **new profile**, **copy from another profile** (merge or replace), **layer** toggles, and **save snapshot**.
+- **Main map (default)** is the normal profile; others are optional **personal** sandboxes. The header badge shows **Main view** or **Personal view · …**.
+- **Export data** / **Import data** / server sync apply to the **active profile** only. Use **Copy from another profile** if you want the same data in more than one profile.
 
 ---
 
@@ -103,7 +126,7 @@ If Firebase or a REST server is set up (`js/config.js`):
 
 ## 5. Export changes for the latest version (sharing your work)
 
-Export creates a single JSON file with **all** current territories and POIs (and category colors). That file is the “latest version” snapshot you can send to others or back up.
+Export creates a single JSON file with **all** current data for the **active profile**. That file is the “latest version” snapshot you can send to others or back up.
 
 ### Export to a file
 
@@ -111,11 +134,16 @@ Export creates a single JSON file with **all** current territories and POIs (and
 2. Click **Export data** in the header.
 3. A file downloads (e.g. `gta5-map-data.json`) with:
    - `version: 2`
+   - `profileId` – which profile was active when you exported
    - `territories` – array of territory GeoJSON-style features (each has `properties.id`, `properties.name`, etc.)
    - `poi` – array of POI objects (each has `id`, `name`, `category`, `notes`, `position`)
    - `categories` and `categoryColors` – for POI categories and their colors
+   - `hiddenTerritoryIds` / `hiddenPoiIds` – visibility state
+   - `settings` – territory and POI category **color palette** rules from **Settings**
 
 **When to use:** After you’ve made changes and want to send “the latest version” to someone else. They use **Import data (merge)** with this file.
+
+**Undo import:** If a merge import went wrong, **Undo import** in the header restores the snapshot saved **just before** that import (then reloads).
 
 ### Save to server (push your version)
 
@@ -137,7 +165,11 @@ If Firebase or a REST server is set up:
 | Add a zone | **Draw territory** → click corners → double-click to finish → fill form → **Save** |
 | Change a POI or territory | Click it (list or map) → **Edit** → change fields → **Save** |
 | Remove a POI or territory | Click it → **Delete** (or Edit form → **Delete**) → confirm |
+| Filter lists / find on map | Type in header **search**; **Enter** = go to first match |
+| Profiles / layers / snapshots | **Map options** |
+| Category color palettes | **Settings** |
 | Get others’ updates from a file | **Import data (merge)** → select JSON file |
+| Undo a bad import | **Undo import** |
 | Get latest from server | **Load from server** (merge with current) |
 | Send your version to others (file) | **Export data** → send the downloaded JSON |
 | Push your version to server | **Save to server** |
@@ -147,8 +179,8 @@ If Firebase or a REST server is set up:
 ## Important details about the data
 
 - **IDs:** Every territory has `properties.id`, every POI has `id`. These are generated when you create the item and are used for merge (same id = update, new id = add). Don’t remove or change IDs if you want merge to work correctly.
-- **Export format:** The export is valid JSON. You can open it in a text editor; the structure is `{ "version": 2, "territories": [...], "poi": [...], "categories": [...], "categoryColors": {...} }`.
-- **Import format:** The file you import should have the same structure (at least `territories` and `poi` as arrays). Missing `categoryColors` is fine; they’re merged if present.
+- **Export format:** The export is valid JSON. You can open it in a text editor. It includes `profileId`, `settings` (palette rules), visibility arrays, and the fields above.
+- **Import format:** The file you import should have the same shape (at least `territories` and `poi` as arrays). Missing `categoryColors` or `settings` is fine; present fields are merged where applicable.
 - **Reload after import:** The app reloads the page after a successful file import so the map and lists reflect the merged data. After **Load from server** it also reloads.
 
 If you use **only** localStorage (no server): share updates by **Export data** → send file → others **Import data (merge)**. If you use **Firebase or REST**: use **Load from server** to pull latest and **Save to server** when you’re done with your changes.
